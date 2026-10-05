@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply min-h-screen bg-bg font-sans text-text;
+    background-image:
+      radial-gradient(60rem 30rem at 10% -10%, rgba(139, 92, 246, 0.12), transparent 60%),
+      radial-gradient(40rem 24rem at 100% 0%, rgba(16, 185, 129, 0.08), transparent 60%);
+    background-attachment: fixed;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-violet ring-offset-2 ring-offset-bg;
+  }
+  code,
+  pre,
+  kbd {
+    @apply font-mono;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply rounded-2xl border border-border bg-surface/70 backdrop-blur-md;
+  }
+  .input {
+    @apply w-full rounded-lg border border-border bg-bg/60 px-3 py-2 text-sm text-text placeholder:text-muted/60
+      transition duration-150 ease-out focus:border-violet focus:outline-none focus:ring-1 focus:ring-violet;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted;
+  }
+  .skeleton {
+    @apply animate-pulse rounded-md bg-border/60;
+  }
+}
+
+/* Markdown rendering for review write-ups */
+.prose-rp {
+  @apply text-sm leading-relaxed text-text;
+}
+.prose-rp h2 {
+  @apply mb-3 mt-6 text-lg font-semibold first:mt-0;
+}
+.prose-rp h3 {
+  @apply mb-2 mt-5 text-base font-semibold text-violet;
+}
+.prose-rp p {
+  @apply my-2;
+}
+.prose-rp ul {
+  @apply my-2 list-disc space-y-1 pl-5;
+}
+.prose-rp ol {
+  @apply my-2 list-decimal space-y-1 pl-5;
+}
+.prose-rp a {
+  @apply text-violet underline-offset-2 hover:underline;
+}
+.prose-rp code {
+  @apply rounded bg-border/70 px-1 py-0.5 text-[0.85em];
+}
+.prose-rp pre {
+  @apply my-3 overflow-x-auto rounded-lg border border-border bg-bg p-3 text-xs;
+}
+.prose-rp pre code {
+  @apply bg-transparent p-0;
+}
+.prose-rp blockquote {
+  @apply my-3 border-l-2 border-amber pl-3 text-muted;
+}
+.prose-rp hr {
+  @apply my-4 border-border;
+}
+.prose-rp table {
+  @apply my-3 w-full text-left text-xs;
+}
+.prose-rp th,
+.prose-rp td {
+  @apply border border-border px-2 py-1;
+}
+.prose-rp input[type="checkbox"] {
+  @apply mr-1.5 accent-violet;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

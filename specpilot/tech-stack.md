@@ -1,0 +1,44 @@
+# Tech Stack
+
+Record any change to this stack here *before* implementing it.
+
+## Backend (`backend/`)
+
+- Python 3.11+
+- FastAPI and uvicorn
+- SQLAlchemy 2 with Alembic migrations
+- Pydantic v2 and pydantic-settings. Config is loaded from `backend/.env` (`app/core/config.py`).
+- httpx for GitHub and LLM HTTP calls
+- PyJWT (GitHub App JWT) and cryptography (Fernet token encryption)
+- In-process, DB-backed job worker that claims jobs atomically, retries with backoff, and resumes jobs after a restart
+
+## Storage
+
+- SQLite in WAL mode for the pilot.
+- Postgres is a possible later target. Keep SQL portable through SQLAlchemy.
+
+## AI / LLM
+
+- Google Gemini (`gemini-2.0-flash` by default), configured via `GEMINI_*` settings.
+- The model sits behind the reviewer service so it can be swapped later. No Gemini-specific types should
+  leak outside it.
+
+## Frontend (`frontend/`)
+
+- React 18, TypeScript, and Vite
+- TanStack Query for server state; react-router for routing
+- Tailwind CSS, lucide-react, react-markdown with remark-gfm and rehype-highlight
+- The API base comes from `VITE_API_BASE` (defaults to `/api/v1`, proxied by Vite in development)
+
+## Tooling
+
+- Backend: ruff (lint and isort), pytest, pytest-asyncio, pytest-cov, and respx (HTTP mocking)
+- Frontend: ESLint, `tsc` type checking, Vitest, and Testing Library
+
+## Deployment
+
+- Runs as a single service on an internal host or VM. A free host (Render, etc.) is acceptable for the pilot.
+- No multi-tenant SaaS.
+- Secrets live in `backend/.env` and `backend/secrets/`, both gitignored.
+- `SPECPILOT_API_KEY` belongs only in the repo-root `.env`, which the SpecPilot tooling reads. It is not
+  application config.

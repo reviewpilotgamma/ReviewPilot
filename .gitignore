@@ -1,0 +1,31 @@
+# Secrets & local config
+.env
+*.pem
+backend/secrets/*
+!backend/secrets/.gitkeep
+
+# Databases
+*.db
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pr/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

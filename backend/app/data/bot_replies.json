@@ -1,0 +1,6 @@
+{
+  "welcome": "👋 Thanks @{author}! ReviewPilot is set to on-demand mode for this repository. Comment `@review` (optionally with a focus, e.g. `@review focus on auth boundaries`) to request an architectural review.",
+  "plan": "## 🧭 ReviewPilot Execution Plan\n- [ ] Verify the change against the PR description\n- [ ] Add/update tests for the new behavior\n- [ ] Check migrations and rollback path\n- [ ] Update documentation\n- [ ] Confirm monitoring/alerts for the change\n\n---\n_Triggered via ReviewPilot · @bot plan_",
+  "error": "⚠️ ReviewPilot couldn't complete the architectural review for this PR ({reason}). Please try again later by commenting `@review`. If this keeps happening, contact your ReviewPilot admin.",
+  "empty_diff": "ℹ️ ReviewPilot found no file changes to review in this PR."
+}

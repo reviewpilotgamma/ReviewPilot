@@ -1,0 +1,74 @@
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "/api/v1";
+
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+type Listener = () => void;
+const unauthorizedListeners = new Set<Listener>();
+
+/** Subscribe to 401 responses (used by AuthContext to reset state and redirect). */
+export function onUnauthorized(listener: Listener): () => void {
+  unauthorizedListeners.add(listener);
+  return () => unauthorizedListeners.delete(listener);
+}
+
+export type QueryParams = Record<string, string | number | boolean | undefined | null>;
+
+export function buildQuery(params?: QueryParams): string {
+  if (!params) return "";
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") search.set(key, String(value));
+  }
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
+
+export function loginUrl(next?: string): string {
+  return `${API_BASE}/auth/login${buildQuery({ next })}`;
+}
+
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      // CSRF defence: cross-site forms cannot set custom headers.
+      "X-Requested-With": "ReviewPilot",
+      ...init.headers,
+    },
+  });
+
+  if (response.status === 401) {
+    unauthorizedListeners.forEach((listener) => listener());
+    throw new ApiError(401, "Unauthorized");
+  }
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: unknown };
+    const detail =
+      typeof body.detail === "string"
+        ? body.detail
+        : Array.isArray(body.detail)
+          ? "Validation failed"
+          : response.statusText || "Request failed";
+    throw new ApiError(response.status, detail);
+  }
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
+}
+
+export const http = {
+  get: <T>(path: string, params?: QueryParams) => api<T>(`${path}${buildQuery(params)}`),
+  post: <T>(path: string, body?: unknown) =>
+    api<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),
+  put: <T>(path: string, body: unknown) => api<T>(path, { method: "PUT", body: JSON.stringify(body) }),
+  delete: <T>(path: string) => api<T>(path, { method: "DELETE" }),
+};

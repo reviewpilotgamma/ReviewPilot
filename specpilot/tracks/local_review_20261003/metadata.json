@@ -1,0 +1,9 @@
+{
+  "track_id": "local_review_20261003",
+  "title": "Local review pipeline without GitHub",
+  "type": "feature",
+  "status": "in_progress",
+  "created": "2026-10-03",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}

@@ -1,0 +1,101 @@
+from __future__ import annotations
+
+import json
+
+from sqlalchemy import select
+
+from app.models import Job, WebhookEvent
+from tests.conftest import load_fixture, post_webhook, sign
+
+
+def _events(db):
+    return db.scalars(select(WebhookEvent).order_by(WebhookEvent.id)).all()
+
+
+def test_invalid_signature_rejected_without_db_write(client, db):
+    response = client.post(
+        "/api/v1/webhooks/github",
+        content=b"{}",
+        headers={"X-Hub-Signature-256": "sha256=bad", "X-GitHub-Event": "ping"},
+    )
+    assert response.status_code == 401
+    assert _events(db) == []
+
+
+def test_missing_signature_rejected(client):
+    assert client.post("/api/v1/webhooks/github", content=b"{}").status_code == 401
+
+
+def test_invalid_json_rejected(client):
+    body = b"not json"
+    response = client.post("/api/v1/webhooks/github", content=body, headers={"X-Hub-Signature-256": sign(body)})
+    assert response.status_code == 400
+
+
+def test_ping_processed(client, db):
+    response = post_webhook(client, "ping", {"zen": "hi"})
+    assert response.status_code == 200
+    assert _events(db)[0].status == "processed"
+
+
+def test_pr_opened_enqueues_review_atomically(client, db):
+    response = post_webhook(client, "pull_request", load_fixture("pull_request_opened.json"))
+    assert response.json() == {"status": "ok", "jobs": 1}
+    event = _events(db)[0]
+    assert event.status == "queued" and event.repo == "acme/api" and event.sender == "bob"
+    job = db.scalars(select(Job)).one()
+    assert job.kind == "review" and job.status == "queued" and job.event_id == event.id
+    assert json.loads(job.payload)["pr_number"] == 7
+
+
+def test_duplicate_delivery_not_reprocessed(client, db):
+    payload = load_fixture("pull_request_opened.json")
+    post_webhook(client, "pull_request", payload, delivery="same")
+    response = post_webhook(client, "pull_request", payload, delivery="same")
+    assert response.json()["status"] == "duplicate"
+    assert len(_events(db)) == 1
+    assert len(db.scalars(select(Job)).all()) == 1
+
+
+def test_bot_sender_ignored(client, db):
+    payload = load_fixture("issue_comment_review.json")
+    payload["sender"] = {"login": "reviewpilot[bot]", "type": "Bot"}
+    post_webhook(client, "issue_comment", payload)
+    event = _events(db)[0]
+    assert event.status == "ignored" and event.error_message == "bot sender"
+    assert db.scalars(select(Job)).all() == []
+
+
+def test_non_trigger_comment_ignored_with_reason(client, db):
+    payload = load_fixture("issue_comment_review.json")
+    payload["comment"]["body"] = "lgtm"
+    post_webhook(client, "issue_comment", payload)
+    assert _events(db)[0].error_message == "no trigger"
+
+
+def test_legacy_webhook_alias(client):
+    body = json.dumps({"zen": "x"}).encode()
+    response = client.post(
+        "/webhook", content=body, headers={"X-Hub-Signature-256": sign(body), "X-GitHub-Event": "ping"}
+    )
+    assert response.status_code == 200
+
+
+def test_events_endpoint_is_tenant_scoped(client, db, login):
+    post_webhook(client, "pull_request", load_fixture("pull_request_opened.json"), delivery="a")
+    other = load_fixture("pull_request_opened.json")
+    other["repository"]["full_name"] = "other/repo"
+    post_webhook(client, "pull_request", other, delivery="b")
+
+    login(repos=("acme/api",))
+    response = client.get("/api/v1/webhooks/events")
+    assert response.status_code == 200
+    items = response.json()
+    assert [e["repo"] for e in items] == ["acme/api"]
+    assert items[0]["jobs"][0]["kind"] == "review"
+
+    assert client.get("/api/v1/webhooks/events", params={"repo": "other/repo"}).status_code == 404
+
+
+def test_events_require_auth(client):
+    assert client.get("/api/v1/webhooks/events").status_code == 401

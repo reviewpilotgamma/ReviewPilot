@@ -1,0 +1,17 @@
+{
+  "action": "created",
+  "issue": {
+    "number": 7,
+    "title": "Add payment retries",
+    "user": {"login": "bob"},
+    "pull_request": {"url": "https://api.github.com/repos/Acme/API/pulls/7"}
+  },
+  "comment": {
+    "id": 555,
+    "body": "Looks good so far.\n@review focus on auth boundaries\nthanks",
+    "user": {"login": "alice", "type": "User"}
+  },
+  "repository": {"full_name": "Acme/API", "private": false},
+  "installation": {"id": 99},
+  "sender": {"login": "alice", "type": "User"}
+}
