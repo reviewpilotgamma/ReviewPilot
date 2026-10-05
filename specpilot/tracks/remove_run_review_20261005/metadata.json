@@ -1,0 +1,9 @@
+{
+  "track_id": "remove_run_review_20261005",
+  "title": "Remove manual Run review",
+  "type": "chore",
+  "status": "planned",
+  "created": "2026-10-05",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}
