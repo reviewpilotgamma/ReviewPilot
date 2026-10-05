@@ -8,7 +8,6 @@ import type {
   Preset,
   Rating,
   Replies,
-  ManualReviewInput,
   ReviewDetail,
   ReviewFilters,
   ReviewListItem,
@@ -49,7 +48,6 @@ export const rulesApi = {
 
 export const reviewsApi = {
   list: (filters: ReviewFilters) => http.get<Page<ReviewListItem>>("/reviews", { ...filters }),
-  runManual: (body: ManualReviewInput) => http.post<ReviewDetail>("/reviews/manual", body),
   get: (id: number) => http.get<ReviewDetail>(`/reviews/${id}`),
   feedback: (id: number, rating: Rating, notes: string) =>
     http.post<Feedback>(`/reviews/${id}/feedback`, { rating, notes }),

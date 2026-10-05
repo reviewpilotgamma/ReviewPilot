@@ -105,15 +105,6 @@ export interface ReviewDetail extends ReviewListItem {
   my_feedback: Feedback | null;
 }
 
-export interface ManualReviewInput {
-  repo: string;
-  pr_number: number;
-  title: string;
-  description: string;
-  focus_note: string;
-  diff: string;
-}
-
 export interface ReviewFilters {
   repo?: string;
   author?: string;
