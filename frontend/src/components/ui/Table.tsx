@@ -4,17 +4,17 @@ import type { ReactNode } from "react";
 export function Table({ head, children }: { head: ReactNode[]; children: ReactNode }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-left text-sm">
+      <table className="w-full min-w-[640px] text-left text-sm text-ink">
         <thead className="text-xs uppercase tracking-wide text-muted">
           <tr>
             {head.map((cell, i) => (
-              <th key={i} scope="col" className="px-4 py-3 font-medium">
+              <th key={i} scope="col" className="px-4 py-3 font-medium text-muted">
                 {cell}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody>{children}</tbody>
+        <tbody className="text-ink">{children}</tbody>
       </table>
     </div>
   );
@@ -50,5 +50,5 @@ export function Row({ children, onClick, label }: RowProps) {
 }
 
 export function Cell({ children, className }: { children: ReactNode; className?: string }) {
-  return <td className={clsx("px-4 py-3 align-middle", className)}>{children}</td>;
+  return <td className={clsx("px-4 py-3 align-middle text-ink", className)}>{children}</td>;
 }

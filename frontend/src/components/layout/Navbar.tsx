@@ -20,10 +20,10 @@ export function Navbar({ title, onMenu }: { title: string; onMenu: () => void })
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-bg/80 px-4 backdrop-blur-md md:px-6">
-      <button className="rounded-md p-2 text-muted hover:text-text md:hidden" onClick={onMenu} aria-label="Open navigation">
+      <button className="rounded-md p-2 text-muted hover:text-ink md:hidden" onClick={onMenu} aria-label="Open navigation">
         <Menu className="h-5 w-5" />
       </button>
-      <h1 className="truncate text-lg font-semibold">{title}</h1>
+      <h1 className="truncate text-lg font-semibold text-ink">{title}</h1>
 
       <div className="ml-auto flex items-center gap-3">
         {repos.length > 0 && (
@@ -44,7 +44,7 @@ export function Navbar({ title, onMenu }: { title: string; onMenu: () => void })
 
         <div className="relative" ref={menuRef}>
           <button
-            className="flex items-center gap-2 rounded-full border border-border p-0.5 pr-3 text-sm hover:border-violet/50"
+            className="flex items-center gap-2 rounded-full border border-border p-0.5 pr-3 text-sm text-ink hover:border-violet/50"
             onClick={() => setMenuOpen((v) => !v)}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
@@ -61,12 +61,12 @@ export function Navbar({ title, onMenu }: { title: string; onMenu: () => void })
           {menuOpen && (
             <div role="menu" className="glass absolute right-0 mt-2 w-48 bg-surface p-1 shadow-xl">
               <div className="px-3 py-2 text-xs text-muted">
-                Signed in as <span className="font-medium text-text">{user?.username}</span>
+                Signed in as <span className="font-medium text-ink">{user?.username}</span>
                 {user?.is_admin && <span className="ml-1 text-violet">(admin)</span>}
               </div>
               <button
                 role="menuitem"
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-border/50"
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-ink hover:bg-border/50"
                 onClick={() => void logout()}
               >
                 <LogOut className="h-4 w-4" /> Logout

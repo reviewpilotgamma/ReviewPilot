@@ -102,7 +102,7 @@ function RuleEditor({ repo, rule, onDirtyChange }: RuleEditorProps) {
                     role="tab"
                     aria-selected={tab === t}
                     onClick={() => setTab(t)}
-                    className={tab === t ? "text-violet" : "text-muted hover:text-text"}
+                    className={tab === t ? "text-violet" : "text-muted hover:text-ink"}
                   >
                     {t === "edit" ? "Custom instructions" : "Preview"}
                   </button>
@@ -190,7 +190,7 @@ function RuleEditor({ repo, rule, onDirtyChange }: RuleEditorProps) {
         <p className="mb-3 text-sm text-muted">
           Live preview of the directives ReviewPilot adds to the reviewer prompt for this configuration:
         </p>
-        <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-bg p-3 text-xs text-text/90">
+        <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-bg p-3 text-xs text-ink/90">
           {previewDirectives(form)}
         </pre>
       </Card>

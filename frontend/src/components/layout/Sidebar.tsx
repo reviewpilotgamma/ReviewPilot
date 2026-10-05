@@ -32,8 +32,8 @@ export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () =>
               clsx(
                 "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition duration-150",
                 isActive
-                  ? "bg-violet-soft text-text before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-violet"
-                  : "text-muted hover:bg-border/40 hover:text-text",
+                  ? "bg-violet-soft text-ink before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-violet"
+                  : "text-muted hover:bg-border/40 hover:text-ink",
               )
             }
           >

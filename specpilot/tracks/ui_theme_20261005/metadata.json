@@ -1,0 +1,9 @@
+{
+  "track_id": "ui_theme_20261005",
+  "title": "Apply static/ palette to current UI",
+  "type": "chore",
+  "status": "in_progress",
+  "created": "2026-10-05",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}

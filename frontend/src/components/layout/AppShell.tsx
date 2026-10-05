@@ -13,7 +13,7 @@ export function AppShell() {
     <WorkspaceProvider>
       <Sidebar open={navOpen} onNavigate={() => setNavOpen(false)} />
       {navOpen && (
-        <div className="fixed inset-0 z-30 bg-black/50 md:hidden" onClick={() => setNavOpen(false)} aria-hidden />
+        <div className="fixed inset-0 z-30 bg-[rgba(23,48,44,0.35)] md:hidden" onClick={() => setNavOpen(false)} aria-hidden />
       )}
       <div className="md:pl-60">
         <Navbar title={title} onMenu={() => setNavOpen(true)} />

@@ -19,7 +19,7 @@ export function ReviewDrawer({ reviewId, onClose }: { reviewId: number | null; o
       <h2 className="text-lg font-semibold leading-snug">{review.pr_title}</h2>
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
         <VerdictBadge verdict={review.verdict} />
-        <span className="font-medium text-text">{formatScore(review.score)}</span>
+        <span className="font-medium text-ink">{formatScore(review.score)}</span>
         <span>·</span>
         <span>{absoluteTime(review.created_at)}</span>
         <span>·</span>

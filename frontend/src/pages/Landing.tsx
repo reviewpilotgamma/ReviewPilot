@@ -116,7 +116,7 @@ export default function Landing() {
           <p className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-violet/40 bg-violet-soft px-3 py-1 text-xs text-violet">
             <ShieldCheck className="h-3.5 w-3.5" /> Your automated senior architect
           </p>
-          <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight md:text-6xl">
+          <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight text-ink md:text-6xl">
             Architectural review for <span className="text-violet">every pull request</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-muted md:text-lg">
@@ -156,7 +156,7 @@ export default function Landing() {
           {FEATURES.map(({ icon: Icon, title, body }) => (
             <div key={title} className="glass p-6">
               <Icon className="h-6 w-6 text-violet" />
-              <h3 className="mt-3 font-semibold">{title}</h3>
+              <h3 className="mt-3 font-semibold text-ink">{title}</h3>
               <p className="mt-1 text-sm text-muted">{body}</p>
             </div>
           ))}
@@ -164,7 +164,7 @@ export default function Landing() {
 
         <section className="mt-16 grid items-start gap-8 lg:grid-cols-2">
           <div>
-            <h2 className="text-2xl font-semibold">Traditional linters vs ReviewPilot</h2>
+            <h2 className="text-2xl font-semibold text-ink">Traditional linters vs ReviewPilot</h2>
             <div className="glass mt-4 overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="text-xs uppercase tracking-wide text-muted">
@@ -177,7 +177,7 @@ export default function Landing() {
                 <tbody>
                   {COMPARISON.map(([capability, linter, rp]) => (
                     <tr key={capability} className="border-t border-border">
-                      <td className="px-4 py-3">{capability}</td>
+                      <td className="px-4 py-3 text-ink">{capability}</td>
                       <td className="px-4 py-3 text-center">
                         <SupportCell value={linter} />
                       </td>
@@ -191,7 +191,7 @@ export default function Landing() {
             </div>
           </div>
           <div>
-            <h2 className="text-2xl font-semibold">What lands in your PR</h2>
+            <h2 className="text-2xl font-semibold text-ink">What lands in your PR</h2>
             <div className="glass mt-4 p-5">
               <MarkdownView markdown={SAMPLE_COMMENT} />
             </div>

@@ -2,16 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* static/app.css */
+  --ink: #17302c;
+  --muted: #4a625c;
+  --signal: #0f6e62;
+  --signal-ink: #f4faf8;
+  --line: rgba(23, 48, 44, 0.14);
+  --warn: #9c3218;
+  --panel: rgba(255, 252, 247, 0.92);
+  --paper: #fffcf7;
+}
+
 @layer base {
   html {
-    color-scheme: dark;
+    color-scheme: light;
   }
   body {
-    @apply min-h-screen bg-bg font-sans text-text;
+    @apply min-h-screen bg-bg font-sans antialiased;
+    color: var(--ink) !important;
+    background-color: var(--paper);
     background-image:
-      radial-gradient(60rem 30rem at 10% -10%, rgba(139, 92, 246, 0.12), transparent 60%),
-      radial-gradient(40rem 24rem at 100% 0%, rgba(16, 185, 129, 0.08), transparent 60%);
+      linear-gradient(180deg, rgba(255, 252, 247, 0.2) 0%, rgba(255, 252, 247, 0.72) 46%, #f3eee4 100%),
+      repeating-linear-gradient(
+        90deg,
+        transparent 0 88px,
+        rgba(23, 48, 44, 0.04) 88px 89px
+      ),
+      linear-gradient(165deg, #7eb8b0 0%, #c9dde4 38%, #e7d7c4 78%, #efe6d8 100%);
     background-attachment: fixed;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  li,
+  td,
+  th,
+  label,
+  a {
+    color: var(--ink);
   }
   :focus-visible {
     @apply outline-none ring-2 ring-violet ring-offset-2 ring-offset-bg;
@@ -25,14 +58,25 @@
 
 @layer components {
   .glass {
-    @apply rounded-2xl border border-border bg-surface/70 backdrop-blur-md;
+    @apply rounded-2xl border border-border backdrop-blur-md;
+    color: var(--ink);
+    background: var(--panel);
   }
   .input {
-    @apply w-full rounded-lg border border-border bg-bg/60 px-3 py-2 text-sm text-text placeholder:text-muted/60
-      transition duration-150 ease-out focus:border-violet focus:outline-none focus:ring-1 focus:ring-violet;
+    @apply w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm transition duration-150 ease-out
+      focus:border-violet focus:outline-none focus:ring-1 focus:ring-violet;
+    color: var(--ink);
+  }
+  .input::placeholder {
+    color: var(--muted);
+  }
+  .input option {
+    background: var(--paper);
+    color: var(--ink);
   }
   .label {
-    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted;
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide;
+    color: var(--muted);
   }
   .skeleton {
     @apply animate-pulse rounded-md bg-border/60;
@@ -41,50 +85,102 @@
 
 /* Markdown rendering for review write-ups */
 .prose-rp {
-  @apply text-sm leading-relaxed text-text;
+  @apply text-sm leading-relaxed;
+  color: var(--ink);
 }
 .prose-rp h2 {
   @apply mb-3 mt-6 text-lg font-semibold first:mt-0;
+  color: var(--ink);
 }
 .prose-rp h3 {
-  @apply mb-2 mt-5 text-base font-semibold text-violet;
+  @apply mb-2 mt-5 text-base font-semibold;
+  color: var(--signal);
 }
-.prose-rp p {
+.prose-rp p,
+.prose-rp li {
   @apply my-2;
+  color: var(--ink);
 }
 .prose-rp ul {
   @apply my-2 list-disc space-y-1 pl-5;
+  color: var(--ink);
 }
 .prose-rp ol {
   @apply my-2 list-decimal space-y-1 pl-5;
+  color: var(--ink);
 }
 .prose-rp a {
-  @apply text-violet underline-offset-2 hover:underline;
+  color: var(--signal);
+  text-underline-offset: 2px;
+}
+.prose-rp a:hover {
+  text-decoration: underline;
 }
 .prose-rp code {
-  @apply rounded bg-border/70 px-1 py-0.5 text-[0.85em];
+  @apply rounded px-1 py-0.5 text-[0.85em];
+  background: rgba(23, 48, 44, 0.08);
+  color: var(--ink);
 }
 .prose-rp pre {
-  @apply my-3 overflow-x-auto rounded-lg border border-border bg-bg p-3 text-xs;
+  @apply my-3 overflow-x-auto rounded-lg border border-border p-3 text-xs;
+  background: var(--paper);
+  color: var(--ink);
 }
 .prose-rp pre code {
   @apply bg-transparent p-0;
+  color: var(--ink);
 }
 .prose-rp blockquote {
-  @apply my-3 border-l-2 border-amber pl-3 text-muted;
+  @apply my-3 border-l-2 pl-3;
+  border-color: #9a5b2e;
+  color: var(--muted);
+}
+.prose-rp strong {
+  @apply font-semibold;
+  color: var(--ink);
 }
 .prose-rp hr {
-  @apply my-4 border-border;
+  @apply my-4;
+  border-color: var(--line);
 }
 .prose-rp table {
   @apply my-3 w-full text-left text-xs;
+  color: var(--ink);
 }
 .prose-rp th,
 .prose-rp td {
-  @apply border border-border px-2 py-1;
+  @apply border px-2 py-1;
+  border-color: var(--line);
+  color: var(--ink);
 }
 .prose-rp input[type="checkbox"] {
-  @apply mr-1.5 accent-violet;
+  @apply mr-1.5;
+  accent-color: var(--signal);
+}
+
+/* Utility overrides so stale Tailwind caches can't wash out type */
+.text-ink {
+  color: var(--ink) !important;
+}
+.text-muted {
+  color: var(--muted) !important;
+}
+.text-violet,
+.text-emerald {
+  color: var(--signal) !important;
+}
+.text-rose {
+  color: var(--warn) !important;
+}
+.text-signal-ink {
+  color: var(--signal-ink) !important;
+}
+.bg-ink {
+  background-color: var(--ink) !important;
+}
+.bg-bg,
+.bg-surface {
+  background-color: var(--paper);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -155,7 +155,7 @@ function RulesStep({ onNext }: { onNext: () => void }) {
   return (
     <div className="space-y-5">
       <p className="text-sm text-muted">
-        Pick a starting point for <span className="font-medium text-text">{selectedRepo}</span>. You can refine it any
+        Pick a starting point for <span className="font-medium text-ink">{selectedRepo}</span>. You can refine it any
         time on the Rules page.
       </p>
       <div className="grid gap-3 md:grid-cols-4">
@@ -240,12 +240,12 @@ function TriggerStep({ onDone }: { onDone: () => void }) {
           <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-violet" />
           <span className="flex flex-wrap items-center gap-1">
             <strong>Or comment on any open PR:</strong>
-            <code className="rounded bg-border/70 px-1.5 py-0.5">@review focus on auth boundaries</code>
+            <code className="rounded bg-ink px-1.5 py-0.5 font-mono text-signal-ink">@review focus on auth boundaries</code>
             <CopyButton text="@review focus on auth boundaries" />
           </span>
         </li>
         <li className="pl-7 text-muted">
-          Tip: <code className="rounded bg-border/70 px-1.5 py-0.5">@bot plan</code> posts a pre-merge execution
+          Tip: <code className="rounded bg-ink px-1.5 py-0.5 font-mono text-signal-ink">@bot plan</code> posts a pre-merge execution
           checklist.
         </li>
       </ol>
@@ -314,7 +314,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
               aria-current={number === step ? "step" : undefined}
               className={clsx(
                 "flex items-center gap-2 rounded-full border px-3 py-1 text-xs",
-                number === step && "border-violet bg-violet-soft text-text",
+                number === step && "border-violet bg-violet-soft text-ink",
                 done && "border-emerald/40 text-emerald",
                 !done && number !== step && "border-border text-muted",
               )}
@@ -330,7 +330,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
       {step === 3 && <RulesStep onNext={() => goTo(4)} />}
       {step >= 4 && <TriggerStep onDone={finish} />}
       {step > 2 && (
-        <button className="mt-4 text-xs text-muted hover:text-text" onClick={() => goTo(step - 1)}>
+        <button className="mt-4 text-xs text-muted hover:text-ink" onClick={() => goTo(step - 1)}>
           ← Back
         </button>
       )}
