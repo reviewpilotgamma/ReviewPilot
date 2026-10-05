@@ -25,6 +25,7 @@ from app.services.prompts import (
 from app.services.replies import render_reply
 from app.services.review_parser import ParsedReview, parse_review
 from app.services.rules import load_rule_settings
+from app.services.documents import ensure_context_cache
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,8 @@ class JobContext:
 
 # --------------------------------------------------------------------------- pure helpers
 def truncate_diff(diff: str, limit: int) -> tuple[str, bool]:
-    if len(diff) <= limit:
+    """Return (diff, truncated). ``limit <= 0`` means no truncation."""
+    if limit <= 0 or len(diff) <= limit:
         return diff, False
     cut = diff.rfind("\n", 0, limit)
     cut = cut if cut > 0 else limit
@@ -82,6 +84,17 @@ def truncate_diff(diff: str, limit: int) -> tuple[str, bool]:
         "Review covers only the portion above. ...]\n"
     )
     return diff[:cut] + note, True
+
+
+def effective_diff_limit(settings_limit: int, *caps: int) -> int:
+    """Combine the configured limit with optional secondary caps.
+
+    ``settings_limit <= 0`` means unlimited for reviews. When secondary caps are
+    provided (e.g. plan jobs), those caps still apply.
+    """
+    if caps:
+        return min(caps) if settings_limit <= 0 else min(settings_limit, *caps)
+    return settings_limit
 
 
 def count_changed_lines(diff: str) -> int:
@@ -118,6 +131,8 @@ def assemble_comment(
     if diff_truncated:
         header.append(
             f"> ⚠️ This PR's diff exceeded {max_diff_chars:,} characters; only the first portion was reviewed."
+            if max_diff_chars > 0
+            else "> ⚠️ This PR's diff was truncated; only the first portion was reviewed."
         )
     head = "\n".join(header) + "\n\n"
     tail = f"\n\n---\n{FOOTER}"
@@ -133,6 +148,13 @@ def assemble_comment(
 def _load_rules(repo_full_name: str) -> RuleSettings:
     with SessionLocal() as db:
         return load_rule_settings(db, repo_full_name)
+
+
+async def _docs_for_prompt(repo_full_name: str) -> tuple[str | None, str | None]:
+    """Return (cached_content name, inline documents text for fallback)."""
+    with SessionLocal() as db:
+        cached, inline = await ensure_context_cache(db, repo_full_name)
+    return cached, (inline or None)
 
 
 def _load_review(review_id: int) -> tuple[str, int | None] | None:
@@ -200,11 +222,14 @@ async def handle_review(ctx: JobContext) -> None:
     lines_reviewed = count_changed_lines(diff)
     diff_for_prompt, truncated = truncate_diff(diff, settings.MAX_DIFF_CHARS)
     rules = await asyncio.to_thread(_load_rules, ctx.repo_full_name)
+    cached, inline_docs = await _docs_for_prompt(ctx.repo_full_name)
 
     requester_note = ctx.data.get("requester_note") or None
     result = await gemini.generate(
         build_review_system_prompt(rules, requester_note),
         build_pr_context(pr, ctx.owner, ctx.repo, diff_for_prompt),
+        cached_content=cached,
+        inline_documents=inline_docs,
     )
     parsed = parse_review(result.text)
     trigger = ctx.data.get("trigger", "comment")
@@ -258,15 +283,18 @@ async def handle_plan(ctx: JobContext) -> None:
     except GitHubPermanentError as exc:
         raise DiffFetchError(str(exc), exc.status_code) from exc
 
-    limit = min(get_settings().MAX_DIFF_CHARS, PLAN_MAX_DIFF_CHARS)
+    limit = effective_diff_limit(get_settings().MAX_DIFF_CHARS, PLAN_MAX_DIFF_CHARS)
     diff_for_prompt, _ = truncate_diff(diff, limit)
     rules = await asyncio.to_thread(_load_rules, ctx.repo_full_name)
+    cached, inline_docs = await _docs_for_prompt(ctx.repo_full_name)
 
     try:
         result = await gemini.generate(
             build_plan_system_prompt(rules),
             build_pr_context(pr, ctx.owner, ctx.repo, diff_for_prompt),
             max_output_tokens=PLAN_MAX_OUTPUT_TOKENS,
+            cached_content=cached,
+            inline_documents=inline_docs,
         )
         body = f"{PLAN_BANNER}\n{result.text.strip()}\n\n---\n{PLAN_FOOTER}"
     except ServiceError as exc:

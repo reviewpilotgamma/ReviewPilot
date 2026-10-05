@@ -1,5 +1,5 @@
-import { RotateCcw, Save } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { FileUp, RotateCcw, Save, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useBlocker } from "react-router-dom";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -10,11 +10,119 @@ import { Modal } from "@/components/ui/Overlay";
 import { FullPageSpinner } from "@/components/ui/Spinner";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { useToast, useWorkspace } from "@/hooks/useAuth";
-import { usePresets, useResetRule, useRule, useSaveRule } from "@/hooks/useRules";
+import {
+  useDeleteDocument,
+  usePresets,
+  useRepoDocuments,
+  useResetRule,
+  useRule,
+  useSaveRule,
+  useUploadDocument,
+} from "@/hooks/useRules";
 import { appendPreset, previewDirectives } from "@/lib/directives";
 import type { Rule, RuleInput } from "@/types/api";
 
 const MAX_CHARS = 10_000;
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function DocumentPanel({ repo }: { repo: string }) {
+  const toast = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { data, isLoading, isError, refetch } = useRepoDocuments(repo);
+  const upload = useUploadDocument(repo);
+  const remove = useDeleteDocument(repo);
+
+  const onPick = (files: FileList | null) => {
+    if (!files?.length) return;
+    void (async () => {
+      for (const file of Array.from(files)) {
+        try {
+          await upload.mutateAsync(file);
+          toast.success(`Uploaded ${file.name}`);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : `Could not upload ${file.name}`);
+        }
+      }
+      if (inputRef.current) inputRef.current.value = "";
+    })();
+  };
+
+  return (
+    <Card
+      title="Architecture & requirements docs"
+      description="Uploaded documents are referenced on every PR review. Large packs use Gemini context caching to cut token cost."
+    >
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            ref={inputRef}
+            type="file"
+            className="hidden"
+            multiple
+            accept=".txt,.md,.markdown,.rst,.pdf,text/plain,text/markdown,application/pdf"
+            onChange={(event) => onPick(event.target.files)}
+          />
+          <Button
+            variant="secondary"
+            icon={<FileUp className="h-4 w-4" />}
+            loading={upload.isPending}
+            onClick={() => inputRef.current?.click()}
+          >
+            Upload documents
+          </Button>
+          {data && (
+            <Badge tone={data.cache_status === "cached" ? "emerald" : data.cache_status === "inline" ? "amber" : "gray"}>
+              {data.cache_status === "cached"
+                ? "Gemini cache ready"
+                : data.cache_status === "inline"
+                  ? "Inline reference (below cache size)"
+                  : "No documents"}
+            </Badge>
+          )}
+        </div>
+        <p className="text-xs text-muted">Supports .txt, .md, .rst, .pdf · max 5 MB each · up to 20 files</p>
+        {isLoading && <p className="text-sm text-muted">Loading documents…</p>}
+        {isError && <ErrorState onRetry={() => void refetch()} />}
+        {data && data.items.length === 0 && (
+          <p className="text-sm text-muted">No documents yet. Upload your architecture or requirements pack.</p>
+        )}
+        {data && data.items.length > 0 && (
+          <ul className="divide-y divide-border rounded-lg border border-border">
+            {data.items.map((doc) => (
+              <li key={doc.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-ink">{doc.filename}</p>
+                  <p className="text-xs text-muted">
+                    {formatBytes(doc.size_bytes)} · {doc.char_count.toLocaleString()} chars ·{" "}
+                    {new Date(doc.uploaded_at).toLocaleString()}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Delete ${doc.filename}`}
+                  icon={<Trash2 className="h-4 w-4" />}
+                  loading={remove.isPending}
+                  onClick={() =>
+                    remove.mutate(doc.id, {
+                      onSuccess: () => toast.success(`Removed ${doc.filename}`),
+                      onError: (error) => toast.error(error.message || "Could not delete"),
+                    })
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Card>
+  );
+}
 
 function toInput(rule: Rule): RuleInput {
   const { custom_instructions, verbosity, review_mode, enable_security } = rule;
@@ -185,6 +293,8 @@ function RuleEditor({ repo, rule, onDirtyChange }: RuleEditorProps) {
           </div>
         </div>
       </Card>
+
+      <DocumentPanel repo={repo} />
 
       <Card title="How rules are applied" description="Injected into every review of this repository.">
         <p className="mb-3 text-sm text-muted">

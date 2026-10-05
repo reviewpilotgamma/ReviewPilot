@@ -12,16 +12,19 @@ Record any change to this stack here *before* implementing it.
 - PyJWT (GitHub App JWT) and cryptography (Fernet token encryption)
 - In-process, DB-backed job worker that claims jobs atomically, retries with backoff, and resumes jobs after a restart
 
-## Storage
-
-- SQLite in WAL mode for the pilot.
-- Postgres is a possible later target. Keep SQL portable through SQLAlchemy.
-
 ## AI / LLM
 
 - Google Gemini (`gemini-2.0-flash` by default), configured via `GEMINI_*` settings.
 - The model sits behind the reviewer service so it can be swapped later. No Gemini-specific types should
   leak outside it.
+- Explicit Gemini Cached Contents for per-repo architecture/requirements documents (fallback: inline
+  injection when the pack is below the cache size gate). TTL via `GEMINI_CACHE_TTL_SECONDS`.
+- PDF text extraction for uploads via `pypdf`; multipart uploads via `python-multipart`.
+
+## Storage
+
+- SQLite in WAL mode for the pilot (rules, reviews, jobs, uploaded documents, cache metadata).
+- Postgres is a possible later target. Keep SQL portable through SQLAlchemy.
 
 ## Frontend (`frontend/`)
 

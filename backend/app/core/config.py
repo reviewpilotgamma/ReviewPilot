@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     GEMINI_API_URL: str = "https://generativelanguage.googleapis.com/v1beta"
     GEMINI_TEMPERATURE: float = 0.2
     GEMINI_MAX_OUTPUT_TOKENS: int = 8192
+    GEMINI_CACHE_TTL_SECONDS: int = Field(86_400, ge=60, le=7 * 24 * 3600)
 
     # --- Auth / security ---
     SESSION_SECRET: SecretStr = SecretStr("")
@@ -51,7 +52,8 @@ class Settings(BaseSettings):
     ADMIN_GITHUB_LOGINS: str = ""
 
     # --- Review engine ---
-    MAX_DIFF_CHARS: int = Field(120_000, gt=0)
+    # 0 = no truncation (send full PR diff). Positive values restore a hard character cap.
+    MAX_DIFF_CHARS: int = Field(0, ge=0)
     MAX_COMMENT_CHARS: int = Field(65_000, gt=1000, le=65_536)
     INSTALLATION_TOKEN_TTL_SECONDS: int = Field(3000, gt=60, le=3600)
 
