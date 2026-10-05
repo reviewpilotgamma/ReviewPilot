@@ -7,13 +7,10 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import Accessible, CurrentUser, DbSession, csrf_protect, scoped_repos
-from app.core.config import get_settings
 from app.models import PRReview
 from app.schemas.common import Page, Verdict
-from app.schemas.reviews import FeedbackIn, FeedbackOut, ManualReviewIn, ReviewDetail, ReviewListItem
-from app.services import reviewer
+from app.schemas.reviews import FeedbackIn, FeedbackOut, ReviewDetail, ReviewListItem
 from app.services import reviews as reviews_service
-from app.services.errors import EmptyDiffError, NotConfiguredError, ServiceError
 
 router = APIRouter(prefix="/reviews", tags=["reviews"], dependencies=[Depends(csrf_protect)])
 
@@ -26,35 +23,6 @@ def _get_accessible_review(db: DbSession, review_id: int, accessible: Accessible
 
 
 AccessibleReview = Annotated[PRReview, Depends(_get_accessible_review)]
-
-
-@router.post("/manual", response_model=ReviewDetail)
-async def create_manual_review(
-    body: ManualReviewIn, db: DbSession, user: CurrentUser, accessible: Accessible
-) -> ReviewDetail:
-    """Run the AI pipeline on a pasted diff and store the review. Does not post to GitHub."""
-    if not get_settings().local_mode and body.repo not in accessible:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Repository not found")
-    try:
-        review = await reviewer.run_manual_review(
-            repo_full_name=body.repo,
-            pr_number=body.pr_number,
-            title=body.title,
-            description=body.description,
-            author=user.username,
-            focus_note=body.focus_note,
-            diff=body.diff,
-        )
-    except EmptyDiffError as exc:
-        raise HTTPException(422, "Paste a diff before running a review") from exc
-    except NotConfiguredError:
-        raise
-    except ServiceError as exc:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, exc.user_reason) from exc
-    db.add(review)
-    db.commit()
-    db.refresh(review)
-    return reviews_service.review_detail(db, review, user.id)
 
 
 @router.get("", response_model=Page[ReviewListItem])

@@ -15,7 +15,7 @@ from app.core.database import SessionLocal
 from app.models import Job, PRReview
 from app.services import gemini
 from app.services import github_app as gh
-from app.services.errors import DiffFetchError, EmptyDiffError, GitHubPermanentError, ServiceError
+from app.services.errors import DiffFetchError, GitHubPermanentError, ServiceError
 from app.services.prompts import (
     RuleSettings,
     build_plan_system_prompt,
@@ -88,21 +88,6 @@ def count_changed_lines(diff: str) -> int:
     return sum(1 for line in diff.splitlines() if line.startswith(("+", "-")) and not line.startswith(("+++", "---")))
 
 
-def diff_stats(diff: str) -> tuple[int, int, int]:
-    """Return additions, deletions, and changed-file count parsed from a unified diff."""
-    additions = deletions = files = 0
-    for line in diff.splitlines():
-        if line.startswith("diff --git "):
-            files += 1
-        elif line.startswith("+") and not line.startswith("+++"):
-            additions += 1
-        elif line.startswith("-") and not line.startswith("---"):
-            deletions += 1
-    if files == 0 and (additions or deletions):
-        files = 1
-    return additions, deletions, files
-
-
 def _truncate_to(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
@@ -127,7 +112,7 @@ def assemble_comment(
         f"**Verdict:** {VERDICT_LABELS[parsed.verdict]}   ·   "
         f"**Health score:** {parsed.score:.1f}/10   ·   **Lines reviewed:** {lines_reviewed:,}",
     ]
-    if trigger in {"comment", "manual"} and requester:
+    if trigger == "comment" and requester:
         note = f": “{requester_note}”" if requester_note else ""
         header.append(f"_Requested by @{requester}{note}_")
     if diff_truncated:
@@ -180,73 +165,6 @@ def _mark_posted(review_id: int, comment_id: int) -> None:
 async def _post_review(ctx: JobContext, review_id: int, markdown: str) -> None:
     comment_id = await gh.post_issue_comment(ctx.installation_id, ctx.owner, ctx.repo, ctx.pr_number, markdown)
     await asyncio.to_thread(_mark_posted, review_id, comment_id)
-
-
-async def run_manual_review(
-    *,
-    repo_full_name: str,
-    pr_number: int,
-    title: str,
-    description: str,
-    author: str,
-    focus_note: str | None,
-    diff: str,
-) -> PRReview:
-    """Run the review pipeline on a diff the caller already has. Does not call GitHub or save."""
-    if not diff.strip():
-        raise EmptyDiffError("Diff is empty")
-
-    settings = get_settings()
-    lines_reviewed = count_changed_lines(diff)
-    diff_for_prompt, truncated = truncate_diff(diff, settings.MAX_DIFF_CHARS)
-    rules = await asyncio.to_thread(_load_rules, repo_full_name)
-    owner, repo = repo_full_name.split("/", 1)
-    additions, deletions, changed_files = diff_stats(diff)
-    pr = gh.PullRequest(
-        number=pr_number,
-        title=title,
-        body=description,
-        author=author,
-        base_ref="main",
-        head_ref="manual",
-        state="open",
-        draft=False,
-        additions=additions,
-        deletions=deletions,
-        changed_files=changed_files,
-    )
-    note = (focus_note or "").strip() or None
-    result = await gemini.generate(
-        build_review_system_prompt(rules, note),
-        build_pr_context(pr, owner, repo, diff_for_prompt),
-    )
-    parsed = parse_review(result.text)
-    markdown = assemble_comment(
-        parsed,
-        lines_reviewed=lines_reviewed,
-        trigger="manual",
-        requester=author if note else None,
-        requester_note=note,
-        diff_truncated=truncated,
-        max_chars=settings.MAX_COMMENT_CHARS,
-        max_diff_chars=settings.MAX_DIFF_CHARS,
-    )
-    review = PRReview(
-        repo_full_name=repo_full_name,
-        pr_number=pr_number,
-        pr_title=title[:500],
-        author=author,
-        summary=parsed.summary,
-        full_markdown=markdown,
-        verdict=parsed.verdict,
-        score=parsed.score,
-        lines_reviewed=lines_reviewed,
-        trigger="manual",
-        requester=author if note else None,
-        diff_truncated=truncated,
-        model=result.model,
-    )
-    return review
 
 
 async def handle_review(ctx: JobContext) -> None:
