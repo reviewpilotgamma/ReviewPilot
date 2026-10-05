@@ -34,14 +34,14 @@
 
 1. [x] Remove `/run` from `App.tsx` and the nav entry and `Sparkles` import from `Sidebar.tsx`. Delete `RunReview.tsx`. `ba7d20b`
 2. [x] Remove `runManual` from `endpoints.ts` and `ManualReviewInput` from `types/api.ts`. `363ea5b`
-3. [~] Update `pages.test.tsx`: delete the "Run review page" describe block and its import. Add a test that routing to `/run` shows Not Found. If a sidebar test exists in `components.test.tsx`, assert that "Run review" is gone.
-4. [ ] Quality gate from `frontend/`: `npm run lint`, `npm run typecheck`, `npm test`. Commit as `refactor(frontend): Remove Run review page`.
+3. [x] Update `pages.test.tsx`: delete the "Run review page" describe block and its import. Add a test that routing to `/run` shows Not Found. If a sidebar test exists in `components.test.tsx`, assert that "Run review" is gone. `3ed3222`
+4. [x] Quality gate from `frontend/`: `npm run lint`, `npm run typecheck`, `npm test`. Commit as `refactor(frontend): Remove Run review page`. `3ed3222`
 
 ### Phase 2 — Remove the backend manual review path
 
-1. [ ] Delete `create_manual_review` in `api/reviews.py` and `ManualReviewIn` in `schemas/reviews.py`, then prune unused imports (`reviewer`, `get_settings`, `EmptyDiffError`, `NotConfiguredError`, `ServiceError`, `CurrentUser`, `field_validator`, `parse_repo_full_name`). Check each one with grep before removing it.
-2. [ ] Delete `run_manual_review` and `diff_stats` from `reviewer.py`, drop the `EmptyDiffError` import, and change `{"comment", "manual"}` to `{"comment"}` (or a plain `trigger == "comment"`). Delete `EmptyDiffError` from `errors.py`.
-3. [ ] Delete `backend/scripts/run_review.py`. Keep `scripts/__init__.py`, because `import_legacy_db.py` still lives there.
-4. [ ] Update `test_local_mode.py`: remove `MANUAL`, `_gemini`, `GEMINI_URL`, `DIFF`, `LLM_OUTPUT`, the `scripts.run_review` import, and the five manual/script tests. Add `test_manual_review_endpoint_is_gone` (POST returns 404 or 405). Update the module docstring.
-5. [ ] Update the local-mode comment in `backend/.env.example`.
-6. [ ] Quality gate from `backend/`: `ruff check .`, `pytest`. Run a final grep to confirm none of the removed symbols remain in `backend/` or `frontend/src/`. Commit as `refactor(backend): Remove manual review endpoint and script`.
+1. [x] Delete `create_manual_review` in `api/reviews.py` and `ManualReviewIn` in `schemas/reviews.py`, then prune unused imports (`reviewer`, `get_settings`, `EmptyDiffError`, `NotConfiguredError`, `ServiceError`, `CurrentUser`, `field_validator`, `parse_repo_full_name`). Check each one with grep before removing it. `f46374f`
+2. [x] Delete `run_manual_review` and `diff_stats` from `reviewer.py`, drop the `EmptyDiffError` import, and change `{"comment", "manual"}` to `{"comment"}` (or a plain `trigger == "comment"`). Delete `EmptyDiffError` from `errors.py`. `f46374f`
+3. [x] Delete `backend/scripts/run_review.py`. Keep `scripts/__init__.py`, because `import_legacy_db.py` still lives there. `f46374f`
+4. [x] Update `test_local_mode.py`: remove `MANUAL`, `_gemini`, `GEMINI_URL`, `DIFF`, `LLM_OUTPUT`, the `scripts.run_review` import, and the five manual/script tests. Add `test_manual_review_endpoint_is_gone` (POST returns 404 or 405). Update the module docstring. `f46374f`
+5. [x] Update the local-mode comment in `backend/.env.example`. `f46374f`
+6. [x] Quality gate from `backend/`: `ruff check .`, `pytest`. Run a final grep to confirm none of the removed symbols remain in `backend/` or `frontend/src/`. Commit as `refactor(backend): Remove manual review endpoint and script`. `f46374f`
