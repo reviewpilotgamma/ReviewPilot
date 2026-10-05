@@ -7,7 +7,6 @@ import { AuthProvider } from "@/context/AuthContext";
 
 const Landing = lazy(() => import("@/pages/Landing"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
-const RunReview = lazy(() => import("@/pages/RunReview"));
 const Rules = lazy(() => import("@/pages/Rules"));
 const History = lazy(() => import("@/pages/History"));
 const Activity = lazy(() => import("@/pages/Activity"));
@@ -36,7 +35,6 @@ export const routes = [
             element: <AppShell />,
             children: [
               { path: "/dashboard", element: <Dashboard /> },
-              { path: "/run", element: <RunReview /> },
               { path: "/rules", element: <Rules /> },
               { path: "/history", element: <History /> },
               { path: "/activity", element: <Activity /> },
