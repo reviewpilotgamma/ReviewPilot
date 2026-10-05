@@ -33,8 +33,8 @@
 ### Phase 1 — Remove the frontend Run review UI
 
 1. [x] Remove `/run` from `App.tsx` and the nav entry and `Sparkles` import from `Sidebar.tsx`. Delete `RunReview.tsx`. `ba7d20b`
-2. [~] Remove `runManual` from `endpoints.ts` and `ManualReviewInput` from `types/api.ts`.
-3. [ ] Update `pages.test.tsx`: delete the "Run review page" describe block and its import. Add a test that routing to `/run` shows Not Found. If a sidebar test exists in `components.test.tsx`, assert that "Run review" is gone.
+2. [x] Remove `runManual` from `endpoints.ts` and `ManualReviewInput` from `types/api.ts`. `363ea5b`
+3. [~] Update `pages.test.tsx`: delete the "Run review page" describe block and its import. Add a test that routing to `/run` shows Not Found. If a sidebar test exists in `components.test.tsx`, assert that "Run review" is gone.
 4. [ ] Quality gate from `frontend/`: `npm run lint`, `npm run typecheck`, `npm test`. Commit as `refactor(frontend): Remove Run review page`.
 
 ### Phase 2 — Remove the backend manual review path
