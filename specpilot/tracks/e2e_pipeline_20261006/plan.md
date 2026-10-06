@@ -165,14 +165,14 @@
 
 ## Phase 4 — Performance
 
-- [~] 4.1 Size scaling — `tests/e2e/test_perf_scaling.py`
+- [x] 4.1 Size scaling — `tests/e2e/test_perf_scaling.py` `475a865`
   - Parametrize over `SIZE_TIERS`. For each: register the PR, POST the webhook (timed as `ingest`), drain, and
     collect `stage_timer.summary(job_id)`. Add to `e2e_report` with diff bytes, changed lines, and verdict.
   - Assert total pipeline time ≤ budget from `PERF_BUDGETS = {"small": 1, "medium": 2, "large": 5,
     "very_large": 15}`. Budgets can be overridden with the `REVIEWPILOT_E2E_BUDGET_SCALE` float env var for
     slow machines.
   - Extra case: very large with `MAX_DIFF_CHARS=200_000` → record truncated vs. unlimited timings side by side.
-- [ ] 4.2 Throughput — `tests/e2e/test_throughput.py`
+- [~] 4.2 Throughput — `tests/e2e/test_throughput.py`
   - Set `WORKER_CONCURRENCY=4`, `mock_gemini.delay_s=0.02`. Create 5 PRs and 25 webhooks: a mix of PR opened and
     `@review`, including several on the same PR and 3 duplicate delivery ids.
   - `await Worker().start()`, poll until no queued/running jobs (timeout 30 s), then `stop()`.
