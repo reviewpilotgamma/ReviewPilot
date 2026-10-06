@@ -163,7 +163,7 @@
     `succeeded`.
 - [x] 3.3 Quality gate: `ruff check .`, `pytest -m e2e`. `b7883a2`
 
-## Phase 4 — Performance
+## Phase 4 — Performance [checkpoint: 7b9ae6f]
 
 - [x] 4.1 Size scaling — `tests/e2e/test_perf_scaling.py` `475a865`
   - Parametrize over `SIZE_TIERS`. For each: register the PR, POST the webhook (timed as `ingest`), drain, and
@@ -186,7 +186,7 @@
 
 ## Phase 5 — Live mode and docs
 
-- [ ] 5.1 Live Gemini — `tests/e2e/test_live_gemini.py`
+- [~] 5.1 Live Gemini — `tests/e2e/test_live_gemini.py`
   - `pytestmark = [pytest.mark.live]`; every test takes the `live_gemini` fixture (skip reason:
     `"set REVIEWPILOT_E2E_LIVE=1 and REVIEWPILOT_E2E_GEMINI_API_KEY to run"`).
   - Parametrize over `PLANTED_SCENARIOS` plus the `small`/`medium`/`large` tiers (no `very_large`). Run the full
