@@ -195,9 +195,9 @@
   - Assert: job `succeeded`; `sql_injection`/`hardcoded_secret` verdict ≠ `passed`; `clean` verdict ≠ `critical`.
     On `ServiceError`, record the error class in the report and then fail.
   - Ensure the API key never appears in the report: `ReportCollector` redacts any `extra` value containing the key.
-- [~] 5.2 README — §3 Test & lint: add "End-to-end suite" with `pytest -m e2e`, where the report lands, the
+- [x] 5.2 README — §3 Test & lint: add "End-to-end suite" with `pytest -m e2e`, where the report lands, the `e4e45fd`
   budget-scale env var, and live-mode commands for PowerShell and bash.
-- [ ] 5.3 Final quality gate: `ruff check .`, `pytest` (full suite, live auto-skipped), and optionally one live run
+- [x] 5.3 Final quality gate: `ruff check .`, `pytest` (full suite, live auto-skipped), and optionally one live run `e4e45fd`
   if a key is available. Record any pipeline gaps discovered as follow-up notes below (not fixed in this track).
 
 ## Implementation Notes
@@ -216,3 +216,20 @@
   installation token (RSA key load + JWT); production caches the token ~50 min, so it is a cold-start cost.
   Burst: 25 webhooks → 20 jobs, concurrency 4, ~16 jobs/s, 0 overlaps, 4 PRs in parallel; stable over 5 runs.
   E2E subset: 73 tests in ~26 s. `report.md` test lives in `test_report_writer.py` (unit-level, `tmp_path`).
+- **5.1:** live tests skip by default (9 skipped). Wiring verified with a deliberately invalid key: the request
+  reached the real Gemini API (`400 API key not valid`), the failure landed in the report's quality table, and the
+  key was absent from `report.{json,md}`. No real-key run yet (no key available in this environment).
+- **5.3 final gate:** `ruff check .` clean; `pytest --cov=app` → 251 passed, 9 skipped (live), 94 % coverage, ~71 s.
+
+### Follow-up findings (not fixed in this track)
+
+1. **No diff chunking.** `product.md` says large diffs are "batched or chunked instead of being silently cut", but
+   the default `MAX_DIFF_CHARS=0` sends the whole diff: the ~5 MB tier would exceed the model context window in
+   live mode and fail permanently (Gemini 400). With a cap, the diff is truncated with a notice, not chunked.
+2. **Fixed 5 s per-PR busy delay.** In the burst, 6 of 20 jobs were deferred because their PR was busy; with the
+   production `PR_BUSY_DELAY_SECONDS=5`, each deferral adds a full 5 s of latency even when the blocking job
+   finishes in ~100 ms.
+3. **Cold installation token** costs ~120–170 ms on the first GitHub call (RSA key load + JWT); fine with the
+   ~50 min token cache, but visible after restarts.
+4. **Unrelated worktree change.** `backend/app/api/documents.py` had an uncommitted edit (DELETE returns an
+   explicit `Response`) before this track started. It was left uncommitted; the E2E delete test exercises it.
