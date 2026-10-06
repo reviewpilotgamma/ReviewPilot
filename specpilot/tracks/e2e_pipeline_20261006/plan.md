@@ -152,7 +152,7 @@
   - Same delivery id twice → second response `{"status": "duplicate"}`; one review and one comment after drain.
   - Malformed JSON with a valid signature → 400.
   - The posted comment and the report never contain `gemini-key-1234` or the installation token.
-- [~] 3.2 `tests/e2e/test_resilience_flow.py`
+- [x] 3.2 `tests/e2e/test_resilience_flow.py` `b7883a2`
   - Gemini 503 then 200 → after the first drain pass the job is `queued` with `last_error`; fast-forward → `succeeded`;
     two generate calls total.
   - Gemini 429 → retried. Gemini 400 → `failed`, exactly one error comment (`render_reply("error")`).
@@ -161,7 +161,7 @@
   - Exhausted retries (`JOB_MAX_ATTEMPTS=2`, always 503) → `failed`, one failure comment.
   - Crash recovery: ingest, manually set the job `running`, call `worker.recover_interrupted_jobs()` → drain →
     `succeeded`.
-- [ ] 3.3 Quality gate: `ruff check .`, `pytest -m e2e`.
+- [x] 3.3 Quality gate: `ruff check .`, `pytest -m e2e`. `b7883a2`
 
 ## Phase 4 — Performance
 
