@@ -15,6 +15,7 @@ from app.core.database import SessionLocal
 from app.models import Job, PRReview
 from app.services import gemini
 from app.services import github_app as gh
+from app.services.documents import ensure_context_cache
 from app.services.errors import DiffFetchError, GitHubPermanentError, ServiceError
 from app.services.prompts import (
     RuleSettings,
@@ -25,7 +26,6 @@ from app.services.prompts import (
 from app.services.replies import render_reply
 from app.services.review_parser import ParsedReview, parse_review
 from app.services.rules import load_rule_settings
-from app.services.documents import ensure_context_cache
 
 logger = logging.getLogger(__name__)
 

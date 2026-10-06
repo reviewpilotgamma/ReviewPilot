@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.documents import DocumentError, _safe_name, assemble_documents_text, extract_text
-from app.services.documents import save_document, list_documents
+from app.services.documents import (
+    DocumentError,
+    _safe_name,
+    assemble_documents_text,
+    extract_text,
+    list_documents,
+    save_document,
+)
 
 
 def test_safe_name_rejects_bad_extensions():
