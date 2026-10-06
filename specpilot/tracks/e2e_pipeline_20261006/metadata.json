@@ -1,0 +1,9 @@
+{
+  "track_id": "e2e_pipeline_20261006",
+  "title": "End-to-end pipeline integration and performance testing",
+  "type": "chore",
+  "status": "in_progress",
+  "created": "2026-10-06",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}
