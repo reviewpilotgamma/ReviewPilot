@@ -91,7 +91,7 @@
   - `async drain_worker(max_iterations=500, worker=None)`: loops `Worker().run_once()`; when it returns `False`,
     calls `fast_forward_jobs` once and retries; stops when no `queued` or `running` jobs remain.
   - `fast_forward_jobs()`: `UPDATE jobs SET next_run_at = utcnow() WHERE status='queued'`.
-- [~] 1.5 E2E fixtures — `tests/e2e/conftest.py`
+- [x] 1.5 E2E fixtures — `tests/e2e/conftest.py` `7cfb96d`
   - `pytestmark`-style auto-marking: `pytest_collection_modifyitems` adds `e2e` to every item under `tests/e2e/`.
   - Fixtures: `fake_github`, `mock_gemini`, `stage_timer` (installed by default), session-scoped `e2e_report`
     (one `ReportCollector`), `live_gemini` (skips unless `REVIEWPILOT_E2E_LIVE=1` and the key env var are set).
@@ -99,7 +99,7 @@
   - Helper `webhook_pr_opened(client, scenario, number, delivery)` and `webhook_comment(client, body, number,
     delivery, sender="alice", sender_type="User")` that build payloads (based on
     `fixtures/pull_request_opened.json` / `issue_comment_review.json`) and call `post_webhook`.
-- [ ] 1.6 Quality gate: `ruff check .`, `pytest tests/e2e/test_diffs.py`.
+- [x] 1.6 Quality gate: `ruff check .`, `pytest tests/e2e/test_diffs.py`. `7cfb96d`
 
 ## Phase 2 — Feature E2E flows
 
