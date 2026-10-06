@@ -179,9 +179,9 @@
   - Assert all jobs `succeeded`, reviews == unique non-duplicate review jobs, no overlapping `(repo, pr)` in the
     handler wrapper, and duplicates produced no extra jobs. Record jobs/sec and p50/p95 job latency to
     `e2e_report.add_throughput`.
-- [~] 4.3 Report writer check: a test (ordered last via file name or an explicit fixture) asserting that
+- [x] 4.3 Report writer check: a test (ordered last via file name or an explicit fixture) asserting that `eb5bd00`
   `ReportCollector.write(tmp_path)` produces valid JSON and a Markdown table with one row per recorded scenario.
-- [ ] 4.4 Quality gate: `ruff check .`, `pytest -m e2e --durations=10`; confirm the E2E subset runs in < 60 s and
+- [x] 4.4 Quality gate: `ruff check .`, `pytest -m e2e --durations=10`; confirm the E2E subset runs in < 60 s and `eb5bd00`
   `backend/e2e-reports/report.md` is produced.
 
 ## Phase 5 — Live mode and docs
@@ -210,3 +210,9 @@
   `DateTime(timezone=True)`; SQLite returns it naive, so `ensure_context_cache` raised `TypeError` comparing it
   with aware `now()` and **every review after the first on a cached repo failed permanently**. Switched to
   `UTCDateTime` (same storage, no migration) plus a unit regression test in `tests/test_documents.py`.
+- **4.x observed (mocked, dev laptop):** whole pipeline 0.2–0.55 s from small (1.4 KB) to very large (4.9 MB);
+  very large spends ~130 ms in `llm` (JSON-encoding a ~5 MB request) and ~180 ms ingesting; truncating to
+  200k chars drops it to ~0.28 s. `github_pr_fetch` is ~120–170 ms in every test because each test mints a fresh
+  installation token (RSA key load + JWT); production caches the token ~50 min, so it is a cold-start cost.
+  Burst: 25 webhooks → 20 jobs, concurrency 4, ~16 jobs/s, 0 overlaps, 4 PRs in parallel; stable over 5 runs.
+  E2E subset: 73 tests in ~26 s. `report.md` test lives in `test_report_writer.py` (unit-level, `tmp_path`).
