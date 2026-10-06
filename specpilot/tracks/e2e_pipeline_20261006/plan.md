@@ -143,7 +143,7 @@
     rows, no seed data).
 - [x] 2.4 Quality gate: `ruff check .`, `pytest -m e2e`. `2c41f5f`
 
-## Phase 3 — Security and resilience
+## Phase 3 — Security and resilience [checkpoint: 75eefa0]
 
 - [x] 3.1 `tests/e2e/test_security_flow.py` `2f0f031`
   - Bad signature, missing signature, and wrong secret → 401; zero `WebhookEvent`/`Job` rows.
@@ -165,7 +165,7 @@
 
 ## Phase 4 — Performance
 
-- [ ] 4.1 Size scaling — `tests/e2e/test_perf_scaling.py`
+- [~] 4.1 Size scaling — `tests/e2e/test_perf_scaling.py`
   - Parametrize over `SIZE_TIERS`. For each: register the PR, POST the webhook (timed as `ingest`), drain, and
     collect `stage_timer.summary(job_id)`. Add to `e2e_report` with diff bytes, changed lines, and verdict.
   - Assert total pipeline time ≤ budget from `PERF_BUDGETS = {"small": 1, "medium": 2, "large": 5,

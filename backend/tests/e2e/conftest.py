@@ -41,13 +41,6 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
                 reporter.write_line(f"E2E report: {written[1]}")
 
 
-def budget_scale() -> float:
-    try:
-        return float(os.environ.get("REVIEWPILOT_E2E_BUDGET_SCALE", "1"))
-    except ValueError:
-        return 1.0
-
-
 @pytest.fixture
 def e2e_report() -> ReportCollector:
     return REPORT

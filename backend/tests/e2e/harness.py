@@ -11,6 +11,7 @@ import contextvars
 import functools
 import inspect
 import json
+import os
 import re
 import statistics
 import time
@@ -50,6 +51,14 @@ STAGES = (
     "persist",
     "comment_post",
 )
+
+
+def budget_scale() -> float:
+    """Multiplier for perf budgets on slow machines (``REVIEWPILOT_E2E_BUDGET_SCALE``)."""
+    try:
+        return float(os.environ.get("REVIEWPILOT_E2E_BUDGET_SCALE", "1"))
+    except ValueError:
+        return 1.0
 
 
 # --------------------------------------------------------------------------- fake GitHub
@@ -440,7 +449,7 @@ def pending_jobs() -> int:
         return db.scalar(select(func.count()).select_from(Job).where(Job.status.in_(("queued", "running")))) or 0
 
 
-class _LoopHttpClient:
+class LoopHttpClient:
     """Use an HTTP client bound to the current event loop (the app lifespan made one on TestClient's loop)."""
 
     async def __aenter__(self) -> None:
@@ -457,7 +466,7 @@ async def drain_worker(*, w: worker.Worker | None = None, max_iterations: int = 
     """Run jobs until none are queued, fast-forwarding backoff. Returns the number of jobs executed."""
     w = w or worker.Worker()
     executed = 0
-    async with _LoopHttpClient():
+    async with LoopHttpClient():
         for _ in range(max_iterations):
             if await w.run_once():
                 executed += 1
@@ -553,7 +562,7 @@ class Pipeline:
 
     async def run_once(self) -> bool:
         """Claim and run a single due job, without fast-forwarding backoff."""
-        async with _LoopHttpClient():
+        async with LoopHttpClient():
             return await worker.Worker().run_once()
 
     # -- DB reads
@@ -588,7 +597,9 @@ class Pipeline:
         with SessionLocal() as db:
             return list(db.scalars(select(PRReview).order_by(PRReview.id)))
 
-    def record(self, scenario: DiffScenario, delivery: str, *, mode: str = "mocked", **extra: Any) -> ScenarioResult:
+    def record(
+        self, scenario: DiffScenario, delivery: str, *, mode: str = "mocked", label: str | None = None, **extra: Any
+    ) -> ScenarioResult:
         """Add the review job of ``delivery`` to the report and return its result."""
         review_jobs = [j for j in self.jobs(delivery) if j.kind == "review"]
         assert review_jobs, f"no review job for delivery {delivery}"
@@ -600,7 +611,7 @@ class Pipeline:
         stages = self.timer.summary(job.id)
         total = self.timer.totals.get(job.id, 0.0) + stages["ingest"] + stages["claim"]
         result = ScenarioResult(
-            scenario=scenario.name,
+            scenario=label or scenario.name,
             mode=mode,
             diff_bytes=scenario.diff_bytes,
             changed_lines=count_changed_lines(scenario.diff),
