@@ -145,14 +145,14 @@
 
 ## Phase 3 — Security and resilience
 
-- [~] 3.1 `tests/e2e/test_security_flow.py`
+- [x] 3.1 `tests/e2e/test_security_flow.py` `2f0f031`
   - Bad signature, missing signature, and wrong secret → 401; zero `WebhookEvent`/`Job` rows.
   - `sender.type=Bot` and `login` ending `[bot]` on `issue_comment` with `@review` → event `ignored`
     (`bot sender`) and no job.
   - Same delivery id twice → second response `{"status": "duplicate"}`; one review and one comment after drain.
   - Malformed JSON with a valid signature → 400.
   - The posted comment and the report never contain `gemini-key-1234` or the installation token.
-- [ ] 3.2 `tests/e2e/test_resilience_flow.py`
+- [~] 3.2 `tests/e2e/test_resilience_flow.py`
   - Gemini 503 then 200 → after the first drain pass the job is `queued` with `last_error`; fast-forward → `succeeded`;
     two generate calls total.
   - Gemini 429 → retried. Gemini 400 → `failed`, exactly one error comment (`render_reply("error")`).
