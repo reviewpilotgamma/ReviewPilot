@@ -172,14 +172,14 @@
     "very_large": 15}`. Budgets can be overridden with the `REVIEWPILOT_E2E_BUDGET_SCALE` float env var for
     slow machines.
   - Extra case: very large with `MAX_DIFF_CHARS=200_000` → record truncated vs. unlimited timings side by side.
-- [~] 4.2 Throughput — `tests/e2e/test_throughput.py`
+- [x] 4.2 Throughput — `tests/e2e/test_throughput.py` `41349e2`
   - Set `WORKER_CONCURRENCY=4`, `mock_gemini.delay_s=0.02`. Create 5 PRs and 25 webhooks: a mix of PR opened and
     `@review`, including several on the same PR and 3 duplicate delivery ids.
   - `await Worker().start()`, poll until no queued/running jobs (timeout 30 s), then `stop()`.
   - Assert all jobs `succeeded`, reviews == unique non-duplicate review jobs, no overlapping `(repo, pr)` in the
     handler wrapper, and duplicates produced no extra jobs. Record jobs/sec and p50/p95 job latency to
     `e2e_report.add_throughput`.
-- [ ] 4.3 Report writer check: a test (ordered last via file name or an explicit fixture) asserting that
+- [~] 4.3 Report writer check: a test (ordered last via file name or an explicit fixture) asserting that
   `ReportCollector.write(tmp_path)` produces valid JSON and a Markdown table with one row per recorded scenario.
 - [ ] 4.4 Quality gate: `ruff check .`, `pytest -m e2e --durations=10`; confirm the E2E subset runs in < 60 s and
   `backend/e2e-reports/report.md` is produced.
