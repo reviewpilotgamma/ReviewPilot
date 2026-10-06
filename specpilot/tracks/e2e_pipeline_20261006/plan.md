@@ -186,7 +186,7 @@
 
 ## Phase 5 — Live mode and docs
 
-- [~] 5.1 Live Gemini — `tests/e2e/test_live_gemini.py`
+- [x] 5.1 Live Gemini — `tests/e2e/test_live_gemini.py` `1b65953`
   - `pytestmark = [pytest.mark.live]`; every test takes the `live_gemini` fixture (skip reason:
     `"set REVIEWPILOT_E2E_LIVE=1 and REVIEWPILOT_E2E_GEMINI_API_KEY to run"`).
   - Parametrize over `PLANTED_SCENARIOS` plus the `small`/`medium`/`large` tiers (no `very_large`). Run the full
@@ -195,7 +195,7 @@
   - Assert: job `succeeded`; `sql_injection`/`hardcoded_secret` verdict ≠ `passed`; `clean` verdict ≠ `critical`.
     On `ServiceError`, record the error class in the report and then fail.
   - Ensure the API key never appears in the report: `ReportCollector` redacts any `extra` value containing the key.
-- [ ] 5.2 README — §3 Test & lint: add "End-to-end suite" with `pytest -m e2e`, where the report lands, the
+- [~] 5.2 README — §3 Test & lint: add "End-to-end suite" with `pytest -m e2e`, where the report lands, the
   budget-scale env var, and live-mode commands for PowerShell and bash.
 - [ ] 5.3 Final quality gate: `ruff check .`, `pytest` (full suite, live auto-skipped), and optionally one live run
   if a key is available. Record any pipeline gaps discovered as follow-up notes below (not fixed in this track).

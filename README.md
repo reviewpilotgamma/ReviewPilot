@@ -88,13 +88,48 @@ In development, these fall back to ephemeral values, so sessions reset when the 
 
 ```bash
 cd backend
-pytest -q --cov=app                  # 170 tests, ~95 % coverage
+pytest -q --cov=app                  # ~250 tests incl. E2E, ~94 % coverage
 ruff check . && ruff format --check .
 
 cd frontend
 npm test                             # Vitest + Testing Library
 npm run typecheck && npm run lint && npm run build
 ```
+
+### End-to-end pipeline suite
+
+`backend/tests/e2e/` drives every feature through the real entry points: signed webhook → job queue → worker →
+review → GitHub comment → dashboard, feedback and metrics APIs. It uses generated dummy diffs (size tiers from
+~1 KB to ~5 MB, planted issues such as SQL injection or a hardcoded secret, and edge cases). GitHub and Gemini are
+mocked, so it is deterministic and offline, and it runs as part of plain `pytest`.
+
+```bash
+cd backend
+pytest -m e2e --durations=10         # E2E only (~30 s)
+```
+
+Every run writes `backend/e2e-reports/report.md` and `report.json` (gitignored). They hold per-stage timings
+(ingest, claim, PR/diff fetch, rules/docs load, prompt build, LLM, parse, persist, comment post), the size-scaling
+table and burst throughput. Perf budgets are asserted. On a slow machine, scale them with
+`REVIEWPILOT_E2E_BUDGET_SCALE=2`.
+
+**Live mode (opt-in).** This sends the same dummy diffs to the real Gemini API to measure real latency and
+review quality; GitHub stays mocked. It's skipped unless enabled, and the key never goes into `backend/.env` or
+the report.
+
+```powershell
+# PowerShell
+$env:REVIEWPILOT_E2E_LIVE = "1"; $env:REVIEWPILOT_E2E_GEMINI_API_KEY = "<key>"
+pytest -m live                       # optional: $env:REVIEWPILOT_E2E_GEMINI_MODEL = "gemini-2.5-flash"
+```
+
+```bash
+# bash
+REVIEWPILOT_E2E_LIVE=1 REVIEWPILOT_E2E_GEMINI_API_KEY=<key> pytest -m live
+```
+
+Live mode fails if a review job fails, if the SQL-injection or hardcoded-secret diffs come back `passed`, or if
+the clean diff comes back `critical`. Keyword hit rates are reported but not asserted.
 
 ## Migrating PoC data (optional)
 
