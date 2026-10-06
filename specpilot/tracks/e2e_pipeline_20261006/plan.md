@@ -73,7 +73,7 @@
   - Every generated hunk header's counts match its body lines (parse with a small regex).
   - Tier sizes fall within ±20 % of target; `count_changed_lines` > 0 for non-empty tiers.
   - Each planted scenario's `mock_review_markdown` parses via `parse_review` to its declared verdict.
-- [~] 1.4 Harness — `tests/e2e/harness.py`
+- [x] 1.4 Harness — `tests/e2e/harness.py` `4701715`
   - `FakeGitHub(mock_http)`:
     - `add_pr(owner, repo, number, scenario, state="open")` registers the token, PR JSON, and diff routes
       (switch on the `Accept` header, as in `tests/test_reviewer.py::github`).
@@ -91,7 +91,7 @@
   - `async drain_worker(max_iterations=500, worker=None)`: loops `Worker().run_once()`; when it returns `False`,
     calls `fast_forward_jobs` once and retries; stops when no `queued` or `running` jobs remain.
   - `fast_forward_jobs()`: `UPDATE jobs SET next_run_at = utcnow() WHERE status='queued'`.
-- [ ] 1.5 E2E fixtures — `tests/e2e/conftest.py`
+- [~] 1.5 E2E fixtures — `tests/e2e/conftest.py`
   - `pytestmark`-style auto-marking: `pytest_collection_modifyitems` adds `e2e` to every item under `tests/e2e/`.
   - Fixtures: `fake_github`, `mock_gemini`, `stage_timer` (installed by default), session-scoped `e2e_report`
     (one `ReportCollector`), `live_gemini` (skips unless `REVIEWPILOT_E2E_LIVE=1` and the key env var are set).
