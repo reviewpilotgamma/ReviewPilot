@@ -36,14 +36,14 @@
 - **Concurrency check:** `MockGemini` adds a small async delay (default 20 ms) so jobs overlap. A wrapper on
   `reviewer.HANDLERS["review"]` records active `(repo, pr)` keys and fails if one is entered twice.
 
-## Phase 0 — Environment and baseline
+## Phase 0 — Environment and baseline [checkpoint: d8ae04b]
 
 - [x] 0.1 Install backend dependencies into `backend/.venv` `f890abf`
   - From `backend/`: `.venv\Scripts\python -m pip install -r requirements.txt -r requirements-dev.txt`.
   - Run `pytest -q` and `ruff check .`; record the baseline pass count in the implementation notes below. If any
     pre-existing test fails, stop and report it before continuing.
 
-## Phase 1 — Harness and dummy data
+## Phase 1 — Harness and dummy data [checkpoint: dac6362]
 
 - [x] 1.1 Register markers and ignore reports `da955a0`
   - `backend/pyproject.toml` `[tool.pytest.ini_options]`: add
@@ -103,11 +103,11 @@
 
 ## Phase 2 — Feature E2E flows
 
-- [ ] 2.1 Review flows — `tests/e2e/test_review_flows.py`
+- [~] 2.1 Review flows — `tests/e2e/test_review_flows.py`
   - `test_auto_mode_pr_opened_posts_review`: signed `pull_request.opened` (default rules → `auto`) → drain → one
     comment starting with `reviewer.BANNER`, one `PRReview` row with `trigger="auto"`, and the job/event
     `succeeded`/`processed`.
-  - `test_manual_mode_welcome_then_review_with_note`: `PUT /rules/acme/api` `review_mode=manual` (via `login`) →
+  - `test_on_demand_mode_welcome_then_review_with_note`: `PUT /rules/acme/api` `review_mode=on_demand` (via `login`) →
     PR opened → welcome comment only; `@review focus on retries` → `eyes` reaction, comment contains
     `Requested by @alice`, Gemini system prompt contains `focus on retries`.
   - `test_plan_trigger_posts_plan` / `test_plan_falls_back_to_canned_on_permanent_error` (Gemini 400) /
