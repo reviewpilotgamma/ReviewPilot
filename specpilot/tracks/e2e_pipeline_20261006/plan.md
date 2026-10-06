@@ -103,7 +103,7 @@
 
 ## Phase 2 — Feature E2E flows
 
-- [~] 2.1 Review flows — `tests/e2e/test_review_flows.py`
+- [x] 2.1 Review flows — `tests/e2e/test_review_flows.py` `720bfca`
   - `test_auto_mode_pr_opened_posts_review`: signed `pull_request.opened` (default rules → `auto`) → drain → one
     comment starting with `reviewer.BANNER`, one `PRReview` row with `trigger="auto"`, and the job/event
     `succeeded`/`processed`.
@@ -127,14 +127,14 @@
   - `test_parser_fallback_without_meta`.
   - Parametrized over `EDGE_SCENARIOS` (binary, rename_only, unicode): the pipeline completes, and unicode
     survives into the stored `full_markdown` when the mock echoes it.
-- [ ] 2.2 Documents flow — `tests/e2e/test_documents_flow.py`
+- [x] 2.2 Documents flow — `tests/e2e/test_documents_flow.py` `8ebdbe4`
   - Small `.md` upload via `POST /rules/acme/api/documents` → review → no `cachedContents` POST; the system prompt
     contains `BEGIN DOCUMENT: arch.md`.
   - Upload ≥ `documents.MIN_CACHE_CHARS` → review → one cache create, and the generate body has `cachedContent`.
     A second review → still one create (reused). Upload a changed doc → one delete and a new create on the next
     review. Delete doc → cache deleted and the next review is inline/none.
   - Cache create returns 500 → falls back to inline and the review still succeeds.
-- [ ] 2.3 Dashboard flow — `tests/e2e/test_dashboard_flow.py`
+- [~] 2.3 Dashboard flow — `tests/e2e/test_dashboard_flow.py`
   - After two reviews (one critical, one passed): `GET /reviews` lists both with correct verdicts; `GET
     /reviews/{id}` returns `full_markdown` equal to the posted comment; `GET /webhooks/events` shows `processed`
     with jobs.
@@ -205,3 +205,8 @@
 - **0.1 baseline:** Python 3.13.5 venv; `pytest` 177 passed (~30 s). `ruff check .` had 3 pre-existing errors
   (import order in `reviewer.py` / `tests/test_documents.py`, long line in `documents.py`), fixed lint-only in
   `f890abf`. An unrelated uncommitted edit to `app/api/documents.py` was present in the worktree and left untouched.
+- **2.1:** the non-auto review mode is `on_demand` (not `manual`); test renamed accordingly.
+- **2.2 bug found & fixed (`88c62b0`, deviation from "no prod changes"):** `RepoContextCache.expires_at` was
+  `DateTime(timezone=True)`; SQLite returns it naive, so `ensure_context_cache` raised `TypeError` comparing it
+  with aware `now()` and **every review after the first on a cached repo failed permanently**. Switched to
+  `UTCDateTime` (same storage, no migration) plus a unit regression test in `tests/test_documents.py`.
