@@ -184,7 +184,7 @@
 - [x] 4.4 Quality gate: `ruff check .`, `pytest -m e2e --durations=10`; confirm the E2E subset runs in < 60 s and `eb5bd00`
   `backend/e2e-reports/report.md` is produced.
 
-## Phase 5 — Live mode and docs
+## Phase 5 — Live mode and docs [checkpoint: 488fd15]
 
 - [x] 5.1 Live Gemini — `tests/e2e/test_live_gemini.py` `1b65953`
   - `pytestmark = [pytest.mark.live]`; every test takes the `live_gemini` fixture (skip reason:
