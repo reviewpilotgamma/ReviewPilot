@@ -8,8 +8,22 @@ describe("api client", () => {
     await http.put("/rules/acme/api", { verbosity: "concise" });
     const [, init] = fetchMock.mock.calls[0]!;
     expect(init?.credentials).toBe("include");
-    expect((init?.headers as Record<string, string>)["X-Requested-With"]).toBe("ReviewPilot");
+    const headers = new Headers(init?.headers);
+    expect(headers.get("X-Requested-With")).toBe("ReviewPilot");
+    expect(headers.get("Content-Type")).toBe("application/json");
     expect(init?.body).toBe(JSON.stringify({ verbosity: "concise" }));
+  });
+
+  it("skips Content-Type for FormData uploads so the browser sets the boundary", async () => {
+    const fetchMock = mockFetch({ "POST /api/v1/rules/acme/api/documents": { id: 1 } });
+    const form = new FormData();
+    form.append("file", new Blob(["hello"], { type: "text/plain" }), "arch.md");
+    await http.upload("/rules/acme/api/documents", form);
+    const [, init] = fetchMock.mock.calls[0]!;
+    const headers = new Headers(init?.headers);
+    expect(headers.get("X-Requested-With")).toBe("ReviewPilot");
+    expect(headers.get("Content-Type")).toBeNull();
+    expect(init?.body).toBe(form);
   });
 
   it("notifies listeners and throws on 401", async () => {
