@@ -49,7 +49,7 @@
   - `backend/pyproject.toml` `[tool.pytest.ini_options]`: add
     `markers = ["e2e: end-to-end pipeline tests", "live: hits real Gemini (opt-in)"]`.
   - `.gitignore`: add `backend/e2e-reports/`.
-- [ ] 1.2 Dummy diff generator — `tests/e2e/diffs.py`
+- [x] 1.2 Dummy diff generator — `tests/e2e/diffs.py` `54bdc4c`
   - `@dataclass(frozen=True) DiffScenario(name, diff, title, body, expected_verdict_floor, expected_keywords,
     mock_review_markdown)`. `expected_verdict_floor` ∈ `passed|warning|critical` (worst verdict acceptable to
     assert in live mode); `mock_review_markdown` is the canned LLM output for mocked mode.
@@ -68,7 +68,7 @@
   - `EDGE_SCENARIOS`: `empty` (`""`), `whitespace` (`"\n  \n"`), `binary` (`Binary files a/x.png and b/x.png
     differ`), `rename_only` (`similarity index 100%` / `rename from` / `rename to`), `unicode` (emoji, CJK, and a
     U+FFFD replacement char).
-- [ ] 1.3 Generator self-tests — `tests/e2e/test_diffs.py`
+- [~] 1.3 Generator self-tests — `tests/e2e/test_diffs.py`
   - Same seed → identical output; different seed → different output.
   - Every generated hunk header's counts match its body lines (parse with a small regex).
   - Tier sizes fall within ±20 % of target; `count_changed_lines` > 0 for non-empty tiers.
