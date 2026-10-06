@@ -45,7 +45,7 @@
 
 ## Phase 1 — Harness and dummy data
 
-- [~] 1.1 Register markers and ignore reports
+- [x] 1.1 Register markers and ignore reports `da955a0`
   - `backend/pyproject.toml` `[tool.pytest.ini_options]`: add
     `markers = ["e2e: end-to-end pipeline tests", "live: hits real Gemini (opt-in)"]`.
   - `.gitignore`: add `backend/e2e-reports/`.
@@ -68,12 +68,12 @@
   - `EDGE_SCENARIOS`: `empty` (`""`), `whitespace` (`"\n  \n"`), `binary` (`Binary files a/x.png and b/x.png
     differ`), `rename_only` (`similarity index 100%` / `rename from` / `rename to`), `unicode` (emoji, CJK, and a
     U+FFFD replacement char).
-- [~] 1.3 Generator self-tests — `tests/e2e/test_diffs.py`
+- [x] 1.3 Generator self-tests — `tests/e2e/test_diffs.py` `decbabd`
   - Same seed → identical output; different seed → different output.
   - Every generated hunk header's counts match its body lines (parse with a small regex).
   - Tier sizes fall within ±20 % of target; `count_changed_lines` > 0 for non-empty tiers.
   - Each planted scenario's `mock_review_markdown` parses via `parse_review` to its declared verdict.
-- [ ] 1.4 Harness — `tests/e2e/harness.py`
+- [~] 1.4 Harness — `tests/e2e/harness.py`
   - `FakeGitHub(mock_http)`:
     - `add_pr(owner, repo, number, scenario, state="open")` registers the token, PR JSON, and diff routes
       (switch on the `Accept` header, as in `tests/test_reviewer.py::github`).
