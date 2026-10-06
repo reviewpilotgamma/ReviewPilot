@@ -134,14 +134,14 @@
     A second review → still one create (reused). Upload a changed doc → one delete and a new create on the next
     review. Delete doc → cache deleted and the next review is inline/none.
   - Cache create returns 500 → falls back to inline and the review still succeeds.
-- [~] 2.3 Dashboard flow — `tests/e2e/test_dashboard_flow.py`
+- [x] 2.3 Dashboard flow — `tests/e2e/test_dashboard_flow.py` `2c41f5f`
   - After two reviews (one critical, one passed): `GET /reviews` lists both with correct verdicts; `GET
     /reviews/{id}` returns `full_markdown` equal to the posted comment; `GET /webhooks/events` shows `processed`
     with jobs.
   - `POST /reviews/{id}/feedback` helpful + unhelpful (two users) → `feedback_counts` updated;
     `/metrics/summary` and `/metrics/trend` reflect the reviews and feedback (assert counts derived from DB
     rows, no seed data).
-- [ ] 2.4 Quality gate: `ruff check .`, `pytest -m e2e`.
+- [x] 2.4 Quality gate: `ruff check .`, `pytest -m e2e`. `2c41f5f`
 
 ## Phase 3 — Security and resilience
 
