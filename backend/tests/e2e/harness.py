@@ -551,6 +551,11 @@ class Pipeline:
     async def drain(self, w: worker.Worker | None = None) -> int:
         return await drain_worker(w=w)
 
+    async def run_once(self) -> bool:
+        """Claim and run a single due job, without fast-forwarding backoff."""
+        async with _LoopHttpClient():
+            return await worker.Worker().run_once()
+
     # -- DB reads
     @staticmethod
     def job_ids(delivery: str) -> list[int]:

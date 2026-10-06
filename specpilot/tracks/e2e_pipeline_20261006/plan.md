@@ -101,7 +101,7 @@
     `fixtures/pull_request_opened.json` / `issue_comment_review.json`) and call `post_webhook`.
 - [x] 1.6 Quality gate: `ruff check .`, `pytest tests/e2e/test_diffs.py`. `7cfb96d`
 
-## Phase 2 — Feature E2E flows
+## Phase 2 — Feature E2E flows [checkpoint: 189e85e]
 
 - [x] 2.1 Review flows — `tests/e2e/test_review_flows.py` `720bfca`
   - `test_auto_mode_pr_opened_posts_review`: signed `pull_request.opened` (default rules → `auto`) → drain → one
@@ -145,7 +145,7 @@
 
 ## Phase 3 — Security and resilience
 
-- [ ] 3.1 `tests/e2e/test_security_flow.py`
+- [~] 3.1 `tests/e2e/test_security_flow.py`
   - Bad signature, missing signature, and wrong secret → 401; zero `WebhookEvent`/`Job` rows.
   - `sender.type=Bot` and `login` ending `[bot]` on `issue_comment` with `@review` → event `ignored`
     (`bot sender`) and no job.
