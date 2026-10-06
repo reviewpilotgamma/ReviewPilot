@@ -19,6 +19,10 @@ ignore = ["S101", "B008", "S105", "S106"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "e2e: end-to-end pipeline tests (webhook to dashboard, mocked GitHub/Gemini)",
+    "live: hits the real Gemini API; opt-in via REVIEWPILOT_E2E_LIVE=1",
+]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore:Using `httpx` with `starlette.testclient`:Warning",

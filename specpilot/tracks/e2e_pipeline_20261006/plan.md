@@ -45,7 +45,7 @@
 
 ## Phase 1 — Harness and dummy data
 
-- [ ] 1.1 Register markers and ignore reports
+- [~] 1.1 Register markers and ignore reports
   - `backend/pyproject.toml` `[tool.pytest.ini_options]`: add
     `markers = ["e2e: end-to-end pipeline tests", "live: hits real Gemini (opt-in)"]`.
   - `.gitignore`: add `backend/e2e-reports/`.
