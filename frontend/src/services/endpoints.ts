@@ -3,6 +3,7 @@ import type {
   EventFilters,
   Feedback,
   Installation,
+  InsightState,
   MetricsSummary,
   Page,
   Preset,
@@ -60,6 +61,12 @@ export const reviewsApi = {
   get: (id: number) => http.get<ReviewDetail>(`/reviews/${id}`),
   feedback: (id: number, rating: Rating, notes: string) =>
     http.post<Feedback>(`/reviews/${id}/feedback`, { rating, notes }),
+};
+
+export const insightsApi = {
+  get: (repo: string) => http.get<InsightState>("/insights", { repo }),
+  analyze: (repo: string, rebuild = false) =>
+    http.post<InsightState>("/insights/analyze", { repo, rebuild }),
 };
 
 export const metricsApi = {

@@ -146,6 +146,41 @@ export interface TrendPoint {
   avg_score: number | null;
 }
 
+export interface InsightTheme {
+  title: string;
+  severity: Verdict;
+  count: number;
+  last_seen_review_id: number;
+  example_review_ids: number[];
+  evidence: string;
+}
+
+export interface InsightSnapshot {
+  id: number;
+  repo_full_name: string;
+  through_review_id: number;
+  included_count: number;
+  pending_analyzed_count: number;
+  summary_markdown: string;
+  themes: InsightTheme[];
+  new_this_period: string[];
+  still_showing: string[];
+  model: string;
+  created_at: string;
+  created_by: string;
+}
+
+export interface InsightState {
+  repo_full_name: string;
+  snapshot: InsightSnapshot | null;
+  total_reviews: number;
+  pending_count: number;
+  pending_capped: boolean;
+  ran_model: boolean;
+}
+
+export type JobErrorCode = "diff_too_large";
+
 export interface Job {
   id: number;
   kind: "review" | "welcome" | "plan";

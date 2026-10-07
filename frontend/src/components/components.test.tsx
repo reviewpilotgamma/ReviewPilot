@@ -71,6 +71,7 @@ describe("Sidebar", () => {
       "Dashboard",
       "Rules",
       "Review History",
+      "Insights",
       "Activity",
       "Settings",
     ]);

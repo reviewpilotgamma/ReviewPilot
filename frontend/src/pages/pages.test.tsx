@@ -5,10 +5,12 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { routes } from "@/App";
 import History from "@/pages/History";
+import Insights from "@/pages/Insights";
 import Landing from "@/pages/Landing";
 import Rules from "@/pages/Rules";
-import { mockFetch, renderWithProviders } from "@/test/utils";
-import type { ReviewDetail, Rule } from "@/types/api";
+import { promptFixture } from "@/test/prompt";
+import { mockFetch, renderWithProviders, testUser } from "@/test/utils";
+import type { CacheStatus, InsightState, RepoDocument, RepoDocumentList, ReviewDetail, Rule } from "@/types/api";
 
 const PRESETS = [
   { id: "security", name: "Strict Security", description: "d", instructions: "- Check OWASP" },
@@ -172,5 +174,77 @@ describe("History page", () => {
     mockFetch({ "GET /api/v1/reviews": { items: [], total: 0, page: 1, page_size: 20 } });
     renderWithProviders(<History />, { path: "/history?verdict=critical" });
     expect(await screen.findByText("No reviews match these filters")).toBeInTheDocument();
+  });
+
+  it("links to Insights", async () => {
+    mockFetch({ "GET /api/v1/reviews": { items: [REVIEW], total: 1, page: 1, page_size: 20 } });
+    renderWithProviders(<History />, { path: "/history" });
+    expect(await screen.findByRole("link", { name: "Insights" })).toHaveAttribute("href", "/insights");
+  });
+});
+
+const INSIGHT: InsightState = {
+  repo_full_name: "acme/api",
+  snapshot: {
+    id: 1,
+    repo_full_name: "acme/api",
+    through_review_id: 4,
+    included_count: 10,
+    pending_analyzed_count: 10,
+    summary_markdown: "## Recurring issues\nIdempotency keeps showing up.",
+    themes: [
+      {
+        title: "Missing idempotency",
+        severity: "warning",
+        count: 4,
+        last_seen_review_id: 4,
+        example_review_ids: [1, 4],
+        evidence: "Retries without keys on the payment path.",
+      },
+    ],
+    new_this_period: ["Missing idempotency"],
+    still_showing: [],
+    model: "gemini-2.0-flash",
+    created_at: "2026-10-07T12:00:00Z",
+    created_by: "alice",
+  },
+  total_reviews: 12,
+  pending_count: 2,
+  pending_capped: false,
+  ran_model: false,
+};
+
+describe("Insights page", () => {
+  it("asks for a repository when none is selected", () => {
+    renderWithProviders(<Insights />, { path: "/insights" });
+    expect(screen.getByText("Select a repository")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(EMOJI);
+  });
+
+  it("shows the latest snapshot and pending count", async () => {
+    mockFetch({ "GET /api/v1/insights": INSIGHT });
+    renderWithProviders(<Insights />, { path: "/insights", workspace: { selectedRepo: "acme/api" } });
+    expect(await screen.findByText("2 new reviews since the last analysis (12 total in this repo).")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Missing idempotency" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Review 4" })).toHaveAttribute("href", "/history?review=4");
+    expect(screen.getByText("Idempotency keeps showing up.")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(EMOJI);
+  });
+
+  it("runs incremental analyze", async () => {
+    const fetchMock = mockFetch({
+      "GET /api/v1/insights": INSIGHT,
+      "POST /api/v1/insights/analyze": { ...INSIGHT, pending_count: 0, ran_model: true },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<Insights />, { path: "/insights", workspace: { selectedRepo: "acme/api" } });
+    await screen.findByRole("heading", { name: "Missing idempotency" });
+    await user.click(screen.getByRole("button", { name: "Analyze 2 new reviews" }));
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([url, init]) => String(url).includes("/insights/analyze") && init?.method === "POST")).toBe(
+        true,
+      ),
+    );
+    expect(await screen.findByText("Insights updated.")).toBeInTheDocument();
   });
 });
