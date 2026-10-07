@@ -5,6 +5,7 @@ import { MarkdownView } from "@/components/diff/MarkdownView";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { FeedbackWidget } from "@/components/reviews/FeedbackWidget";
+import { ReviewedWith } from "@/components/reviews/ReviewedWith";
 import { StatusBadge, VerdictBadge } from "@/components/ui/Badge";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { mockFetch, renderWithProviders } from "@/test/utils";
@@ -110,5 +111,51 @@ describe("FeedbackWidget", () => {
     );
     expect(screen.getByRole("button", { name: /No/ })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: /Yes/ })).toHaveAttribute("aria-pressed", "false");
+  });
+});
+
+describe("ReviewedWith", () => {
+  it("summarises a custom prompt, instructions and cached documents without emojis", () => {
+    const { container } = render(
+      <ReviewedWith
+        context={{
+          prompt: "custom",
+          prompt_updated_at: "2026-10-07T10:00:00Z",
+          instructions_chars: 120,
+          verbosity: "detailed",
+          security: true,
+          documents: ["arch.md", "reqs.pdf"],
+          documents_mode: "cached",
+          requester_note: false,
+        }}
+      />,
+    );
+    const line = screen.getByLabelText("Reviewed with");
+    expect(line).toHaveTextContent("Golden prompt (edited Oct 7)");
+    expect(line).toHaveTextContent("Instructions (Detailed · Security on)");
+    expect(line).toHaveTextContent("2 documents (cached)");
+    expect(container.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
+  });
+
+  it("omits documents when none were used and renders nothing without context", () => {
+    const { rerender } = render(
+      <ReviewedWith
+        context={{
+          prompt: "default",
+          prompt_updated_at: null,
+          instructions_chars: 0,
+          verbosity: "concise",
+          security: false,
+          documents: [],
+          documents_mode: "none",
+          requester_note: false,
+        }}
+      />,
+    );
+    const line = screen.getByLabelText("Reviewed with");
+    expect(line).toHaveTextContent("No instructions (Concise · Security off)");
+    expect(line).not.toHaveTextContent("document");
+    rerender(<ReviewedWith context={null} />);
+    expect(screen.queryByLabelText("Reviewed with")).toBeNull();
   });
 });

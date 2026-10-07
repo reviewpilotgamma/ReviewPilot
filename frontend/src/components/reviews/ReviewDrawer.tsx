@@ -7,6 +7,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useReview } from "@/hooks/useReviews";
 import { absoluteTime, formatScore } from "@/lib/format";
 import { FeedbackWidget } from "./FeedbackWidget";
+import { ReviewedWith } from "./ReviewedWith";
 
 export function ReviewDrawer({ reviewId, onClose }: { reviewId: number | null; onClose: () => void }) {
   const { data: review, isLoading, isError, refetch } = useReview(reviewId);
@@ -35,6 +36,7 @@ export function ReviewDrawer({ reviewId, onClose }: { reviewId: number | null; o
           Open on GitHub <ExternalLink className="h-3 w-3" />
         </a>
       </div>
+      <ReviewedWith context={review.review_context} />
     </div>
   ) : (
     <h2 className="text-lg font-semibold">Review</h2>
