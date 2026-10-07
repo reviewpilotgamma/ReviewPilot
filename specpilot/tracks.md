@@ -2,6 +2,7 @@
 
 | Track | Type | Status | Created |
 | --- | --- | --- | --- |
+| [diff_batching_20261007](tracks/diff_batching_20261007/index.md) | feature | in progress | 2026-10-07 |
 | [prompt_recipe_20261007](tracks/prompt_recipe_20261007/index.md) | feature | done | 2026-10-07 |
 | [doc_cache_warm_20261007](tracks/doc_cache_warm_20261007/index.md) | feature | done | 2026-10-07 |
 | [e2e_pipeline_20261006](tracks/e2e_pipeline_20261006/index.md) | chore | done | 2026-10-06 |
