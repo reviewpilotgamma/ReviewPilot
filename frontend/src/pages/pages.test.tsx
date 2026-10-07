@@ -8,7 +8,7 @@ import History from "@/pages/History";
 import Landing from "@/pages/Landing";
 import Rules from "@/pages/Rules";
 import { mockFetch, renderWithProviders } from "@/test/utils";
-import type { ReviewDetail, Rule } from "@/types/api";
+import type { CacheStatus, RepoDocument, RepoDocumentList, ReviewDetail, Rule } from "@/types/api";
 
 const PRESETS = [
   { id: "security", name: "Strict Security", description: "d", instructions: "- Check OWASP" },
@@ -138,6 +138,85 @@ describe("Rules page", () => {
     await user.click(within(dialog).getByRole("button", { name: "Reset" }));
     await waitFor(() => expect(deleted).toBe(true));
     expect(await screen.findByText("Using defaults")).toBeInTheDocument();
+  });
+});
+
+const DOC: RepoDocument = {
+  id: 1,
+  repo_full_name: "acme/api",
+  filename: "arch.md",
+  content_type: "text/markdown",
+  size_bytes: 2048,
+  sha256: "abc",
+  char_count: 2000,
+  uploaded_at: "2026-10-07T00:00:00Z",
+};
+
+function docList(cache_status: CacheStatus, items: RepoDocument[] = [DOC]): RepoDocumentList {
+  return { items, total: items.length, cache_status };
+}
+
+const RULES_ROUTES = { "GET /api/v1/rules/presets": PRESETS, "GET /api/v1/rules/acme/api": DEFAULT_RULE };
+
+function fileInput(): HTMLInputElement {
+  const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+  if (!input) throw new Error("file input not rendered");
+  return input;
+}
+
+describe("Rules documents panel", () => {
+  it.each([
+    ["cached", "Gemini cache ready"],
+    ["pending", "Will be cached on next review"],
+    ["inline", "Inline reference (below cache size)"],
+    ["none", "No documents"],
+  ] as const)("shows the %s cache badge", async (status, label) => {
+    mockFetch({
+      ...RULES_ROUTES,
+      "GET /api/v1/rules/acme/api/documents": docList(status, status === "none" ? [] : [DOC]),
+    });
+    renderWithProviders(<Rules />, { path: "/rules" });
+    expect(await screen.findByText(label)).toBeInTheDocument();
+  });
+
+  it("builds the cache only on the last file of a batch", async () => {
+    const uploads: string[] = [];
+    mockFetch({
+      ...RULES_ROUTES,
+      "GET /api/v1/rules/acme/api/documents": docList("none", []),
+      "POST /api/v1/rules/acme/api/documents": (url: URL) => {
+        uploads.push(url.search);
+        return { ...DOC, cache_status: url.search ? "pending" : "cached", cache_error: null };
+      },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<Rules />, { path: "/rules" });
+    await screen.findByText("No documents");
+
+    await user.upload(fileInput(), [
+      new File(["# a"], "a.md", { type: "text/markdown" }),
+      new File(["# b"], "b.md", { type: "text/markdown" }),
+    ]);
+
+    await waitFor(() => expect(uploads).toEqual(["?warm=false", ""]));
+    expect(await screen.findByText("Uploaded b.md")).toBeInTheDocument();
+  });
+
+  it("warns when the document saved but the Gemini cache failed", async () => {
+    mockFetch({
+      ...RULES_ROUTES,
+      "GET /api/v1/rules/acme/api/documents": docList("pending"),
+      "POST /api/v1/rules/acme/api/documents": { ...DOC, cache_status: "pending", cache_error: "Gemini 503: overloaded" },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<Rules />, { path: "/rules" });
+    await screen.findByText("Will be cached on next review");
+
+    await user.upload(fileInput(), new File(["# a"], "arch.md", { type: "text/markdown" }));
+
+    expect(
+      await screen.findByText("Uploaded arch.md — Gemini cache could not be built: Gemini 503: overloaded"),
+    ).toBeInTheDocument();
   });
 });
 
