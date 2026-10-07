@@ -19,7 +19,7 @@
 
 ## Phase 1 — Backend
 
-- [ ] 1.1 Service: build-on-demand and cache state — `app/services/documents.py`
+- [~] 1.1 Service: build-on-demand and cache state — `app/services/documents.py`
   - Extract the create-and-store block of `ensure_context_cache` into `async _build_cache(db, key, docs_text,
     content_hash) -> str`. It raises `GeminiNotConfigured`/`GeminiPermanentError`/`GeminiTransientError`.
     `ensure_context_cache` keeps its current behavior: it catches these and returns `(None, docs_text)`.
