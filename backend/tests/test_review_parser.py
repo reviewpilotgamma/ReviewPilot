@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.services.review_parser import extract_summary, parse_review
+from app.services.review_parser import extract_summary, findings_excerpt, parse_review
 from tests.conftest import FIXTURES
 
 SAMPLE = (FIXTURES / "gemini_review.md").read_text(encoding="utf-8")
@@ -66,3 +66,11 @@ def test_summary_without_heading_uses_first_paragraph():
 def test_summary_truncated():
     md = "### Executive Summary\n" + "x" * 5000 + "\n### Next"
     assert len(extract_summary(md)) == 1000
+
+
+def test_findings_excerpt_uses_section_and_truncates():
+    md = "### Executive Summary\nIgnore me\n### Architectural Findings\n- **Warning** a\n### Recommendations\nfix it"
+    assert findings_excerpt(md) == "- **Warning** a"
+    long = "### Architectural Findings\n" + ("line\n" * 400)
+    excerpt = findings_excerpt(long, max_chars=40)
+    assert len(excerpt) <= 42 and excerpt.endswith("…")

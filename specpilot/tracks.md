@@ -2,6 +2,10 @@
 
 | Track | Type | Status | Created |
 | --- | --- | --- | --- |
+| [review_insights_20261007](tracks/review_insights_20261007/index.md) | feature | in progress | 2026-10-07 |
+| [diff_batching_20261007](tracks/diff_batching_20261007/index.md) | feature | in progress | 2026-10-07 |
+| [prompt_recipe_20261007](tracks/prompt_recipe_20261007/index.md) | feature | done | 2026-10-07 |
+| [doc_cache_warm_20261007](tracks/doc_cache_warm_20261007/index.md) | feature | done | 2026-10-07 |
 | [e2e_pipeline_20261006](tracks/e2e_pipeline_20261006/index.md) | chore | done | 2026-10-06 |
 | [doc_cache_20261005](tracks/doc_cache_20261005/index.md) | feature | in progress | 2026-10-05 |
 | [ui_theme_20261005](tracks/ui_theme_20261005/index.md) | chore | in progress | 2026-10-05 |

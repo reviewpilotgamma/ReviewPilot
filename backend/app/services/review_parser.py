@@ -17,6 +17,7 @@ VERDICTS = ("passed", "warning", "critical")
 SCORE_RANGES = {"critical": (0.0, 4.9), "warning": (5.0, 7.9), "passed": (8.0, 10.0)}
 FALLBACK_SCORES = {"critical": 4.0, "warning": 6.5, "passed": 8.5}
 MAX_SUMMARY_CHARS = 1_000
+MAX_FINDINGS_CHARS = 1_200
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,16 @@ def _fallback_score(verdict: str, counts: dict[str, int]) -> float:
     issues = counts["critical"] + counts["warning"]
     score = FALLBACK_SCORES[verdict] - 0.5 * max(0, issues - 1)
     return round(min(high, max(low, score)), 1)
+
+
+def findings_excerpt(markdown: str, max_chars: int = MAX_FINDINGS_CHARS) -> str:
+    """Architectural Findings section, or the full body, truncated for insight cards."""
+    text = (_section(markdown, "Architectural Findings") or markdown).strip()
+    if len(text) <= max_chars:
+        return text
+    clipped = text[: max_chars - 1]
+    cut = clipped.rsplit("\n", 1)[0]
+    return f"{cut or clipped}\n…"
 
 
 def extract_summary(markdown: str) -> str:
