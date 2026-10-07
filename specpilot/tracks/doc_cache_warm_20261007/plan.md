@@ -17,7 +17,7 @@
 | FR3, FR7 | `frontend/src/services/endpoints.ts`, `frontend/src/hooks/useRules.ts`, `frontend/src/pages/Rules.tsx`, `frontend/src/context/ToastContext.tsx`, `frontend/src/types/api.ts` |
 | Tests | `backend/tests/test_documents.py`, new `backend/tests/test_documents_api.py`, `backend/tests/e2e/test_documents_flow.py`, `frontend/src/pages/pages.test.tsx` |
 
-## Phase 1 — Backend
+## Phase 1 — Backend [checkpoint: 9cf608d]
 
 - [x] 1.1 Service: build-on-demand and cache state — `app/services/documents.py` `4f9cdbc`
   - Extract the create-and-store block of `ensure_context_cache` into `async _build_cache(db, key, docs_text,
@@ -66,7 +66,7 @@
 
 ## Phase 2 — Frontend
 
-- [ ] 2.1 Types and API — `types/api.ts`: `CacheStatus = "none" | "inline" | "cached" | "pending"`;
+- [~] 2.1 Types and API — `types/api.ts`: `CacheStatus = "none" | "inline" | "cached" | "pending"`;
   `RepoDocumentUpload extends RepoDocument { cache_status; cache_error }`. `endpoints.ts`:
   `uploadDocument(repo, file, { warm = true } = {})` appends `?warm=false` when false. `useUploadDocument`
   mutation takes `{ file, warm }`.
