@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from app.services.github_app import PullRequest
@@ -138,13 +139,29 @@ def security_directive(enabled: bool) -> str:
     return SECURITY_ENABLED_DIRECTIVE if enabled else SECURITY_DISABLED_DIRECTIVE
 
 
-def build_review_system_prompt(rules: RuleSettings, requester_note: str | None) -> str:
-    return REVIEW_SYSTEM_TEMPLATE.format(
-        custom_instructions=rules.custom_instructions.strip() or NO_INSTRUCTIONS,
-        verbosity_directive=verbosity_directive(rules.verbosity),
-        security_directive=security_directive(rules.enable_security),
-        requester_note=(requester_note or "").strip() or NO_NOTE,
-    )
+# Editable golden-prompt syntax: only ``{{name}}`` tokens are substituted; every other character is literal.
+TOKEN_RE = re.compile(r"\{\{\s*([a-z_]+)\s*\}\}")
+REVIEW_SLOTS = ("custom_instructions", "verbosity_directive", "security_directive", "requester_note")
+DEFAULT_REVIEW_TEMPLATE = REVIEW_SYSTEM_TEMPLATE.format(**{slot: f"{{{{{slot}}}}}" for slot in REVIEW_SLOTS})
+
+
+def render_template(template: str, values: dict[str, str]) -> str:
+    """Substitute known ``{{name}}`` tokens in one pass; values are never re-scanned."""
+    return TOKEN_RE.sub(lambda m: values.get(m.group(1), m.group(0)), template)
+
+
+def review_slot_values(rules: RuleSettings, requester_note: str | None) -> dict[str, str]:
+    return {
+        "custom_instructions": rules.custom_instructions.strip() or NO_INSTRUCTIONS,
+        "verbosity_directive": verbosity_directive(rules.verbosity),
+        "security_directive": security_directive(rules.enable_security),
+        "requester_note": (requester_note or "").strip() or NO_NOTE,
+    }
+
+
+def build_review_system_prompt(rules: RuleSettings, requester_note: str | None, template: str | None = None) -> str:
+    """Render the golden prompt (``template``, or the built-in default) with this repo's rules."""
+    return render_template(template or DEFAULT_REVIEW_TEMPLATE, review_slot_values(rules, requester_note))
 
 
 def build_pr_context(pr: PullRequest, owner: str, repo: str, diff: str) -> str:

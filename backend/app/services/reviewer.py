@@ -13,7 +13,7 @@ from typing import Any
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.models import Job, PRReview
-from app.services import gemini
+from app.services import gemini, golden_prompt
 from app.services import github_app as gh
 from app.services.documents import ensure_context_cache
 from app.services.errors import DiffFetchError, GitHubPermanentError, ServiceError
@@ -150,6 +150,11 @@ def _load_rules(repo_full_name: str) -> RuleSettings:
         return load_rule_settings(db, repo_full_name)
 
 
+def _load_prompt() -> golden_prompt.EffectivePrompt:
+    with SessionLocal() as db:
+        return golden_prompt.load_effective(db)
+
+
 async def _docs_for_prompt(repo_full_name: str) -> tuple[str | None, str | None]:
     """Return (cached_content name, inline documents text for fallback)."""
     with SessionLocal() as db:
@@ -222,11 +227,12 @@ async def handle_review(ctx: JobContext) -> None:
     lines_reviewed = count_changed_lines(diff)
     diff_for_prompt, truncated = truncate_diff(diff, settings.MAX_DIFF_CHARS)
     rules = await asyncio.to_thread(_load_rules, ctx.repo_full_name)
+    prompt = await asyncio.to_thread(_load_prompt)
     cached, inline_docs = await _docs_for_prompt(ctx.repo_full_name)
 
     requester_note = ctx.data.get("requester_note") or None
     result = await gemini.generate(
-        build_review_system_prompt(rules, requester_note),
+        build_review_system_prompt(rules, requester_note, prompt.template),
         build_pr_context(pr, ctx.owner, ctx.repo, diff_for_prompt),
         cached_content=cached,
         inline_documents=inline_docs,

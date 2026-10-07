@@ -38,7 +38,7 @@
 
 ## Phase 1 — Backend: golden prompt service, storage, API
 
-- [ ] 1.1 Golden prompt service + model + migration
+- [~] 1.1 Golden prompt service + model + migration
   - `models/review_prompt.py::ReviewPrompt` (`id` int PK, `template` Text, `updated_at` UTCDateTime, `updated_by`
     String(100)); register it in `models/__init__`.
   - Migration `0003_prompt_and_context`: create `review_prompt`; add `pr_reviews.review_context` Text nullable;
