@@ -20,7 +20,7 @@ import {
   useUploadDocument,
 } from "@/hooks/useRules";
 import { appendPreset, previewDirectives } from "@/lib/directives";
-import type { Rule, RuleInput } from "@/types/api";
+import type { CacheStatus, Rule, RuleInput } from "@/types/api";
 
 const MAX_CHARS = 10_000;
 
@@ -29,6 +29,13 @@ function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+const CACHE_BADGES: Record<CacheStatus, { tone: "emerald" | "amber" | "gray"; label: string }> = {
+  cached: { tone: "emerald", label: "Gemini cache ready" },
+  pending: { tone: "amber", label: "Will be cached on next review" },
+  inline: { tone: "gray", label: "Inline reference (below cache size)" },
+  none: { tone: "gray", label: "No documents" },
+};
 
 function DocumentPanel({ repo }: { repo: string }) {
   const toast = useToast();
@@ -39,11 +46,18 @@ function DocumentPanel({ repo }: { repo: string }) {
 
   const onPick = (files: FileList | null) => {
     if (!files?.length) return;
+    const picked = Array.from(files);
     void (async () => {
-      for (const file of Array.from(files)) {
+      for (const [index, file] of picked.entries()) {
+        // Build the Gemini cache once, on the last file of the batch.
+        const warm = index === picked.length - 1;
         try {
-          await upload.mutateAsync(file);
-          toast.success(`Uploaded ${file.name}`);
+          const result = await upload.mutateAsync({ file, warm });
+          if (result.cache_error) {
+            toast.warning(`Uploaded ${file.name} — Gemini cache could not be built: ${result.cache_error}`);
+          } else {
+            toast.success(`Uploaded ${file.name}`);
+          }
         } catch (error) {
           toast.error(error instanceof Error ? error.message : `Could not upload ${file.name}`);
         }
@@ -73,17 +87,9 @@ function DocumentPanel({ repo }: { repo: string }) {
             loading={upload.isPending}
             onClick={() => inputRef.current?.click()}
           >
-            Upload documents
+            {upload.isPending ? "Uploading & building cache…" : "Upload documents"}
           </Button>
-          {data && (
-            <Badge tone={data.cache_status === "cached" ? "emerald" : data.cache_status === "inline" ? "amber" : "gray"}>
-              {data.cache_status === "cached"
-                ? "Gemini cache ready"
-                : data.cache_status === "inline"
-                  ? "Inline reference (below cache size)"
-                  : "No documents"}
-            </Badge>
-          )}
+          {data && <Badge tone={CACHE_BADGES[data.cache_status].tone}>{CACHE_BADGES[data.cache_status].label}</Badge>}
         </div>
         <p className="text-xs text-muted">Supports .txt, .md, .rst, .pdf · max 5 MB each · up to 20 files</p>
         {isLoading && <p className="text-sm text-muted">Loading documents…</p>}

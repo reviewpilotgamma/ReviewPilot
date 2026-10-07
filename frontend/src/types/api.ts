@@ -78,10 +78,18 @@ export interface RepoDocument {
   uploaded_at: string;
 }
 
+/** `pending`: large enough to cache, but no Gemini cache exists yet (built on upload or the next review). */
+export type CacheStatus = "none" | "inline" | "cached" | "pending";
+
+export interface RepoDocumentUpload extends RepoDocument {
+  cache_status: CacheStatus;
+  cache_error: string | null;
+}
+
 export interface RepoDocumentList {
   items: RepoDocument[];
   total: number;
-  cache_status: "none" | "inline" | "cached";
+  cache_status: CacheStatus;
 }
 
 export interface Feedback {

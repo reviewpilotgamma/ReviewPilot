@@ -42,7 +42,7 @@ export function useResetRule(repo: string) {
 export function useUploadDocument(repo: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (file: File) => rulesApi.uploadDocument(repo, file),
+    mutationFn: ({ file, warm = true }: { file: File; warm?: boolean }) => rulesApi.uploadDocument(repo, file, { warm }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["repo-documents", repo] });
     },
