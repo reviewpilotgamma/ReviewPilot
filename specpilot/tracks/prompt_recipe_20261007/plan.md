@@ -98,19 +98,19 @@
 
 ## Phase 3 — Frontend: recipe strip, prompt drawer, editor, reviewed-with
 
-- [~] 3.1 Types, API and hooks — `types/api.ts` (`PromptTemplate`, `PromptSegment`, `ReviewContext`, and
+- [x] 3.1 Types, API and hooks — `types/api.ts` (`PromptTemplate`, `PromptSegment`, `ReviewContext`, and `4ac264f`
   `ReviewDetail.review_context`), `services/endpoints.ts::promptApi` (`get`, `save`, `reset`),
   `hooks/usePrompt.ts` (`usePrompt`, `useSavePrompt`, `useResetPrompt`; invalidate `["prompt"]`).
   `lib/directives.ts`: remove the mirrored strings and `previewDirectives`, keep `appendPreset`; update
   `lib.test.ts`.
-- [ ] 3.2 `components/rules/PromptRecipe.tsx`
+- [x] 3.2 `components/rules/PromptRecipe.tsx` `4ac264f`
   - Props: `rule form`, `dirty`, `docs: RepoDocumentList | undefined`, `docsError`, `prompt`, `onViewPrompt`,
     `onFocusInstructions`, `onFocusDocuments`.
   - Three `button` tiles in a `grid sm:grid-cols-[1fr_auto_1fr_auto_1fr_auto]` with `Plus` and `ArrowRight`
     separators. Lucide icons: `Lock`, `ListChecks`, `FileText`. Active tiles use
     `border-violet/40 bg-violet-soft`; empty tiles use `border-dashed text-muted`.
   - No emojis.
-- [ ] 3.3 `components/rules/PromptDrawer.tsx`
+- [x] 3.3 `components/rules/PromptDrawer.tsx` `4ac264f`
   - View mode:
     - render `segments` with values from the form and `directives`; slots are a `mark` styled
       `bg-violet-soft rounded px-1` with a label chip
@@ -124,17 +124,17 @@
     - Save, Cancel (confirm if dirty), "Reset to default" (`Modal` confirm)
     - server 422 reasons are shown inline
   - Non-admins see "Only admins can edit the golden prompt".
-- [ ] 3.4 `Rules.tsx` wiring
+- [x] 3.4 `Rules.tsx` wiring `4ac264f`
   - Render `PromptRecipe` above the grid. Lift `DocumentPanel`'s query (the hook is already shared by query key)
     and refs for focus/scroll; pass the form state from `RuleEditor` up via a callback (`onFormChange`).
   - Update the card descriptions (FR2) and remove the "How rules are applied" card.
-- [ ] 3.5 `components/reviews/ReviewedWith.tsx` + `ReviewDrawer.tsx`
+- [x] 3.5 `components/reviews/ReviewedWith.tsx` + `ReviewDrawer.tsx` `22fd7f7`
   - One line under the title, rendered only when `review_context` is set:
     - `Lock` "Golden prompt" (+ "(edited Mon D)" when custom)
     - `ListChecks` "Instructions (Concise · Security on)", or "No instructions"
     - `FileText` "N documents (cached|inline)", or omitted when none
   - Muted text, separators `·`, no emojis.
-- [ ] 3.6 Tests — `pages.test.tsx` and `components.test.tsx`:
+- [x] 3.6 Tests — `pages.test.tsx` and `components.test.tsx`: `4ac264f`
   - the strip reflects instructions/doc states and the unsaved dot
   - "View full prompt" opens the drawer with the highlighted instructions slot showing unsaved edits
   - an admin edit → client validation blocks a template without `{{custom_instructions}}` → a valid save calls
@@ -142,8 +142,21 @@
   - a non-admin sees no Edit button
   - `ReviewedWith` renders the line for a custom prompt + cached docs and nothing for a null context
   - an assertion that the new components render no emoji characters (`/\p{Extended_Pictographic}/u`)
-- [ ] 3.7 Quality gate: `npm run lint`, `npm run typecheck`, `npm test`.
+- [x] 3.7 Quality gate: `npm run lint`, `npm run typecheck`, `npm test`. `22fd7f7`
 
 ## Implementation Notes
 
-_(filled in during implementation)_
+- **1.1 deviation (design):** to avoid a `prompts` ↔ `golden_prompt` import cycle and to keep prompt
+  building free of database access, `prompts.py` owns `TOKEN_RE`, `REVIEW_SLOTS`, `DEFAULT_REVIEW_TEMPLATE` and
+  `render_template`, and `build_review_system_prompt(rules, note, template=None)` takes the template as an
+  argument. The reviewer loads it in a worker thread (`_load_prompt`). `golden_prompt.py` handles validation,
+  segments and storage. The default renders byte-for-byte like the old `.format` (regression-tested).
+- **1.2:** uses `HTTP_422_UNPROCESSABLE_CONTENT`, because the old constant is deprecated in this Starlette.
+- **2.1:** `review_context.documents` lists filenames only when documents were actually sent (cached or inline).
+- **3.x:** `ApiError` gained `details` so 422 reasons show inline in the editor (`client.test.ts`). The strip and
+  drawer live inside `RuleEditor` (which owns form/dirty); the documents query shares the cache key with
+  `DocumentPanel`, so there is no extra fetch. Tasks 3.1–3.4 share commit `4ac264f`, because the pieces don't
+  compile separately. No emojis: a regex scan of the new or changed UI files was clean, and the tests assert
+  `\p{Extended_Pictographic}` is absent.
+- **Gates:** backend `pytest` 294 passed, 9 skipped, `ruff` clean; frontend lint/typecheck clean, Vitest 47 passed
+  (12 new).

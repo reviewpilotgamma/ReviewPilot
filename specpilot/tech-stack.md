@@ -24,7 +24,8 @@ Record any change to this stack here *before* implementing it.
 
 ## Storage
 
-- SQLite in WAL mode for the pilot (rules, reviews, jobs, uploaded documents, cache metadata).
+- SQLite in WAL mode for the pilot (rules, reviews, jobs, uploaded documents, cache metadata, and the
+  org-wide golden prompt override).
 - Postgres is a possible later target. Keep SQL portable through SQLAlchemy.
 
 ## Frontend (`frontend/`)
