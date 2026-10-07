@@ -66,25 +66,31 @@
 
 ## Phase 2 — Frontend
 
-- [~] 2.1 Types and API — `types/api.ts`: `CacheStatus = "none" | "inline" | "cached" | "pending"`;
+- [x] 2.1 Types and API — `types/api.ts`: `CacheStatus = "none" | "inline" | "cached" | "pending"`; `6791097`
   `RepoDocumentUpload extends RepoDocument { cache_status; cache_error }`. `endpoints.ts`:
   `uploadDocument(repo, file, { warm = true } = {})` appends `?warm=false` when false. `useUploadDocument`
   mutation takes `{ file, warm }`.
-- [ ] 2.2 Toast `warning` kind — `ToastContext.tsx`: add `warning` (amber border, `AlertTriangle` icon) and
+- [x] 2.2 Toast `warning` kind — `ToastContext.tsx`: add `warning` (amber border, `AlertTriangle` icon) and `440b644`
   `toast.warning(message)`.
-- [ ] 2.3 Rules UI — `Rules.tsx::DocumentPanel`:
+- [x] 2.3 Rules UI — `Rules.tsx::DocumentPanel`: `6791097`
   - In the loop, `warm: index === files.length - 1`.
   - On a `cache_error`, call `toast.warning(\`Uploaded ${name} — Gemini cache could not be built: ${error}\`)`;
     otherwise `toast.success`.
   - Button label "Uploading & building cache…" while pending.
   - Badge: `pending` → amber "Will be cached on next review"; `inline` → gray "Inline reference (below cache
     size)"; `cached` → emerald "Gemini cache ready".
-- [ ] 2.4 Tests — `pages.test.tsx` Rules page:
+- [x] 2.4 Tests — `pages.test.tsx` Rules page: `e19fcdb`
   - the badge renders for each status
   - a 2-file upload sends `warm=false` then `warm` omitted
   - a `cache_error` shows the warning toast
-- [ ] 2.5 Quality gate: `npm run lint`, `npm run typecheck`, `npm test`.
+- [x] 2.5 Quality gate: `npm run lint`, `npm run typecheck`, `npm test`. `e19fcdb`
 
 ## Implementation Notes
 
-_(filled in during implementation)_
+- **1.2:** `save_document` now invalidates the cache only when the combined document content hash changes, so
+  re-uploading identical content reuses the cache, as the spec's edge case requires. The pre-existing uncommitted
+  explicit-204 `Response` on delete was committed with this task.
+- **1.4 gate:** backend `pytest` 265 passed, 9 skipped (live); `ruff` clean.
+- **2.1 + 2.3** share commit `6791097`: the new upload signature doesn't type-check without the `Rules.tsx` call
+  site. The "inline" badge is now gray, because amber is reserved for `pending`.
+- **2.5 gate:** frontend lint/typecheck clean; Vitest 35 passed (6 new).

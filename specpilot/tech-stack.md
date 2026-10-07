@@ -18,7 +18,8 @@ Record any change to this stack here *before* implementing it.
 - The model sits behind the reviewer service so it can be swapped later. No Gemini-specific types should
   leak outside it.
 - Explicit Gemini Cached Contents for per-repo architecture/requirements documents (fallback: inline
-  injection when the pack is below the cache size gate). TTL via `GEMINI_CACHE_TTL_SECONDS`.
+  injection when the pack is below the cache size gate). Built synchronously on document upload/delete, with
+  a lazy rebuild on the next review as fallback. TTL via `GEMINI_CACHE_TTL_SECONDS`.
 - PDF text extraction for uploads via `pypdf`; multipart uploads via `python-multipart`.
 
 ## Storage
