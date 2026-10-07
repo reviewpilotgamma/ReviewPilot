@@ -2,7 +2,7 @@
   "track_id": "doc_cache_warm_20261007",
   "title": "Build the Gemini context cache at upload time",
   "type": "feature",
-  "status": "in_progress",
+  "status": "done",
   "created": "2026-10-07",
   "spec": "spec.md",
   "plan": "plan.md"

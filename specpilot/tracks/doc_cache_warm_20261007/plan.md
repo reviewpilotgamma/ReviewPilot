@@ -64,7 +64,7 @@
     (one create, `cachedContent` set).
 - [x] 1.4 Quality gate: `ruff check .`, `pytest`. `00b2ef6`
 
-## Phase 2 — Frontend
+## Phase 2 — Frontend [checkpoint: 6f90411]
 
 - [x] 2.1 Types and API — `types/api.ts`: `CacheStatus = "none" | "inline" | "cached" | "pending"`; `6791097`
   `RepoDocumentUpload extends RepoDocument { cache_status; cache_error }`. `endpoints.ts`:
