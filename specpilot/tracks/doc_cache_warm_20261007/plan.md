@@ -42,7 +42,7 @@
     - create 500 → `pending` with an error
     - no key → `pending` with "not configured"
     - `cache_state` covers all four values
-- [~] 1.2 API — `app/api/documents.py`, `app/schemas/documents.py`
+- [x] 1.2 API — `app/api/documents.py`, `app/schemas/documents.py` `d2a75fe`
   - `DocumentUploadOut(DocumentOut)` adds `cache_status: Literal["none","inline","cached","pending"]` and
     `cache_error: str | None`. `DocumentListOut.cache_status` uses the same `Literal`.
   - `upload_document(..., warm: bool = Query(True))`: after `save_document`, `state = await
@@ -56,7 +56,7 @@
     - create 500 → 201, `pending`, `cache_error` set
     - deleting one of two large docs → re-warmed `cached`
     - deleting the last doc → list `none`
-- [ ] 1.3 E2E update — `tests/e2e/test_documents_flow.py`
+- [~] 1.3 E2E update — `tests/e2e/test_documents_flow.py`
   - Large upload → cache created during the upload (before any review); the first review reuses it
     (`cache_creates == 1`).
   - Add a 3-file batch (`warm=false`, `warm=false`, `warm=true`) → exactly one create.
