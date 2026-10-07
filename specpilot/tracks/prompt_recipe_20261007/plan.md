@@ -78,7 +78,7 @@
 
 ## Phase 2 — Backend: review context
 
-- [~] 2.1 Record and expose `review_context`
+- [x] 2.1 Record and expose `review_context` `83ccf79`
   - `_docs_for_prompt` returns `(cached, inline, filenames)`; update its callers in `handle_review`/`handle_plan`.
   - `handle_review` builds the context dict (see Design notes) and sets `PRReview.review_context =
     json.dumps(...)`. `PRReview` gets `review_context: Mapped[str | None]`.
@@ -94,7 +94,7 @@
     - E2E `tests/e2e/test_prompt_flow.py`: an admin saves a custom golden prompt via `PUT /prompt` → the next
       review's Gemini system prompt contains the custom text and the repo instructions, and
       `review_context.prompt == "custom"`; large docs → `documents_mode == "cached"`; reset → `"default"`.
-- [ ] 2.2 Quality gate: `ruff check .`, `pytest`.
+- [x] 2.2 Quality gate: `ruff check .`, `pytest`. `83ccf79`
 
 ## Phase 3 — Frontend: recipe strip, prompt drawer, editor, reviewed-with
 
