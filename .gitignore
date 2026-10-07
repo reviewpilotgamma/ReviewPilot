@@ -18,6 +18,7 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+backend/e2e-reports/
 
 # Node
 node_modules/

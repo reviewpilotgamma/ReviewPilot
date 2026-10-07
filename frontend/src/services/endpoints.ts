@@ -8,10 +8,11 @@ import type {
   Preset,
   Rating,
   Replies,
-  ManualReviewInput,
   ReviewDetail,
   ReviewFilters,
   ReviewListItem,
+  RepoDocument,
+  RepoDocumentList,
   Rule,
   RuleInput,
   Settings,
@@ -45,11 +46,17 @@ export const rulesApi = {
   get: (repo: string) => http.get<Rule>(`/rules${repoPath(repo)}`),
   save: (repo: string, body: RuleInput) => http.put<Rule>(`/rules${repoPath(repo)}`, body),
   reset: (repo: string) => http.delete<void>(`/rules${repoPath(repo)}`),
+  listDocuments: (repo: string) => http.get<RepoDocumentList>(`/rules${repoPath(repo)}/documents`),
+  uploadDocument: (repo: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return http.upload<RepoDocument>(`/rules${repoPath(repo)}/documents`, form);
+  },
+  deleteDocument: (repo: string, id: number) => http.delete<void>(`/rules${repoPath(repo)}/documents/${id}`),
 };
 
 export const reviewsApi = {
   list: (filters: ReviewFilters) => http.get<Page<ReviewListItem>>("/reviews", { ...filters }),
-  runManual: (body: ManualReviewInput) => http.post<ReviewDetail>("/reviews/manual", body),
   get: (id: number) => http.get<ReviewDetail>(`/reviews/${id}`),
   feedback: (id: number, rating: Rating, notes: string) =>
     http.post<Feedback>(`/reviews/${id}/feedback`, { rating, notes }),

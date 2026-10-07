@@ -76,6 +76,8 @@ def test_truncate_diff_on_line_boundary():
     out, truncated = truncate_diff(diff, 9)
     assert truncated and out.startswith("line1\n") and "DIFF TRUNCATED" in out
     assert truncate_diff(diff, 1000) == (diff, False)
+    assert truncate_diff(diff, 0) == (diff, False)
+    assert truncate_diff(diff, -1) == (diff, False)
 
 
 def test_count_changed_lines_ignores_headers():

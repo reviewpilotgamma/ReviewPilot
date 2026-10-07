@@ -45,11 +45,11 @@ export function FeedbackWidget({ reviewId, myFeedback, counts }: FeedbackWidgetP
           ? rating === "helpful"
             ? "border-emerald bg-emerald-soft text-emerald"
             : "border-rose bg-rose-soft text-rose"
-          : "border-border text-muted hover:text-text",
+          : "border-border text-muted hover:text-ink",
       )}
     >
       <Icon className="h-4 w-4" /> {label}
-      <span className="text-xs opacity-70">{count}</span>
+      <span className="text-xs text-muted">{count}</span>
     </button>
   );
 

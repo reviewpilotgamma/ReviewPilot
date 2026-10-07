@@ -5,7 +5,7 @@ function lineClass(line: string): string {
   if (line.startsWith("+")) return "bg-emerald-soft text-emerald";
   if (line.startsWith("-")) return "bg-rose-soft text-rose";
   if (line.startsWith("@@")) return "text-violet";
-  return "text-text/80";
+  return "text-ink";
 }
 
 export function DiffBlock({ text }: { text: string }) {

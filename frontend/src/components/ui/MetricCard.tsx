@@ -6,7 +6,7 @@ const TONES = {
   amber: "text-amber",
   rose: "text-rose",
   violet: "text-violet",
-  muted: "text-text",
+  muted: "text-ink",
 } as const;
 
 interface MetricCardProps {

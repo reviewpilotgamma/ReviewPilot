@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { MarkdownView } from "@/components/diff/MarkdownView";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { FeedbackWidget } from "@/components/reviews/FeedbackWidget";
 import { StatusBadge, VerdictBadge } from "@/components/ui/Badge";
 import { MetricCard } from "@/components/ui/MetricCard";
@@ -59,6 +60,21 @@ describe("ProtectedRoute", () => {
     const { auth } = renderWithProviders(<ProtectedRoute />, { user: null, path: "/rules?repo=a" });
     await waitFor(() => expect(auth.login).toHaveBeenCalledWith("/rules?repo=a"));
     expect(screen.getByText(/Redirecting to GitHub/)).toBeInTheDocument();
+  });
+});
+
+describe("Sidebar", () => {
+  it("lists the main pages without Run review", () => {
+    renderWithProviders(<Sidebar open onNavigate={() => undefined} />);
+    const links = screen.getAllByRole("link").filter((link) => link.closest("nav"));
+    expect(links.map((link) => link.textContent)).toEqual([
+      "Dashboard",
+      "Rules",
+      "Review History",
+      "Activity",
+      "Settings",
+    ]);
+    expect(screen.queryByRole("link", { name: "Run review" })).toBeNull();
   });
 });
 

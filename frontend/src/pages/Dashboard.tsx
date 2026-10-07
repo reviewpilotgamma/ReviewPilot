@@ -38,7 +38,7 @@ function Sparkline({ points }: { points: TrendPoint[] }) {
     .join(" ");
   return (
     <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-10 w-full" aria-hidden>
-      <path d={path} fill="none" stroke="#8b5cf6" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+      <path d={path} fill="none" stroke="#0f6e62" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -67,7 +67,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
-          {repo ? <>Metrics for <span className="text-text">{repo}</span></> : "Metrics across all your repositories"}
+          {repo ? <>Metrics for <span className="text-ink">{repo}</span></> : "Metrics across all your repositories"}
         </p>
         <SegmentedControl label="Period" value={period} onChange={setPeriod} options={[...PERIODS]} />
       </div>
@@ -122,7 +122,8 @@ export default function Dashboard() {
             title="No reviews yet"
             description={
               <>
-                Open a pull request or comment <code className="rounded bg-border/70 px-1">@review</code> on one to get
+                Open a pull request or comment{" "}
+                <code className="rounded bg-ink px-1.5 py-0.5 font-mono text-signal-ink">@review</code> on one to get
                 your first architectural audit.
               </>
             }

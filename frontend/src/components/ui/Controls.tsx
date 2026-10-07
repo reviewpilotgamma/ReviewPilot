@@ -35,7 +35,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option.value)}
             className={clsx(
               "rounded-md px-3 py-1.5 text-sm transition duration-150",
-              value === option.value ? "bg-violet text-white" : "text-muted hover:text-text",
+              value === option.value ? "bg-violet text-signal-ink" : "text-muted hover:text-ink",
             )}
           >
             {option.label}
@@ -69,18 +69,18 @@ export function Toggle({ label, checked, onChange, description, disabled }: Togg
       >
         <span
           className={clsx(
-            "relative h-6 w-11 rounded-full transition duration-150",
+            "relative inline-block h-6 w-11 shrink-0 overflow-hidden rounded-full transition-colors duration-150",
             checked ? "bg-emerald" : "bg-border",
           )}
         >
           <span
             className={clsx(
-              "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-150",
-              checked ? "translate-x-5" : "translate-x-0.5",
+              "pointer-events-none absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-150",
+              checked ? "translate-x-5" : "translate-x-0",
             )}
           />
         </span>
-        <span className="text-sm">{checked ? "Enabled" : "Disabled"}</span>
+        <span className="text-sm text-ink">{checked ? "Enabled" : "Disabled"}</span>
       </button>
       {description && <p className="mt-1 text-xs text-muted">{description}</p>}
     </div>
@@ -126,7 +126,7 @@ export function Chip({
         "rounded-full border px-3 py-1 text-xs font-medium transition duration-150",
         active
           ? "border-violet bg-violet-soft text-violet"
-          : "border-border text-muted hover:border-violet/50 hover:text-text",
+          : "border-border text-muted hover:border-violet/50 hover:text-ink",
       )}
     >
       {children}

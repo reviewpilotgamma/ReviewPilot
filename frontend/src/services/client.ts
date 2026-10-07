@@ -36,15 +36,17 @@ export function loginUrl(next?: string): string {
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  headers.set("X-Requested-With", "ReviewPilot");
+  // Let the browser set multipart boundary when body is FormData.
+  if (!(init.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      // CSRF defence: cross-site forms cannot set custom headers.
-      "X-Requested-With": "ReviewPilot",
-      ...init.headers,
-    },
+    headers,
   });
 
   if (response.status === 401) {
@@ -71,4 +73,5 @@ export const http = {
     api<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),
   put: <T>(path: string, body: unknown) => api<T>(path, { method: "PUT", body: JSON.stringify(body) }),
   delete: <T>(path: string) => api<T>(path, { method: "DELETE" }),
+  upload: <T>(path: string, form: FormData) => api<T>(path, { method: "POST", body: form }),
 };

@@ -42,12 +42,6 @@ class GitHubRateLimited(GitHubTransientError):
         self.retry_after = retry_after
 
 
-class EmptyDiffError(ServiceError):
-    """A manual review was started with no diff text."""
-
-    user_reason = "diff is empty"
-
-
 class DiffFetchError(GitHubPermanentError):
     user_reason = "PR diff could not be fetched"
 

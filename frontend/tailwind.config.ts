@@ -6,15 +6,17 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: "#0b0f19",
-        surface: "#111827",
-        border: "#1f2937",
-        violet: { DEFAULT: "#8b5cf6", soft: "rgba(139,92,246,0.15)" },
-        emerald: { DEFAULT: "#10b981", soft: "rgba(16,185,129,0.15)" },
-        amber: { DEFAULT: "#f59e0b", soft: "rgba(245,158,11,0.15)" },
-        rose: { DEFAULT: "#f43f5e", soft: "rgba(244,63,94,0.15)" },
-        muted: "#9ca3af",
-        text: "#e5e7eb",
+        // Exact tokens from static/app.css :root
+        bg: "#fffcf7", // --paper
+        surface: "#fffcf7",
+        border: "rgba(23, 48, 44, 0.14)", // --line
+        violet: { DEFAULT: "#0f6e62", soft: "rgba(15, 110, 98, 0.14)" }, // --signal
+        emerald: { DEFAULT: "#0f6e62", soft: "rgba(15, 110, 98, 0.14)" },
+        amber: { DEFAULT: "#9a5b2e", soft: "rgba(154, 91, 46, 0.14)" },
+        rose: { DEFAULT: "#9c3218", soft: "rgba(156, 50, 24, 0.1)" }, // --warn
+        muted: "#4a625c", // --muted
+        ink: "#17302c", // --ink (primary text)
+        "signal-ink": "#f4faf8", // --signal-ink
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],

@@ -15,7 +15,8 @@ from app.core.database import SessionLocal
 from app.models import Job, PRReview
 from app.services import gemini
 from app.services import github_app as gh
-from app.services.errors import DiffFetchError, EmptyDiffError, GitHubPermanentError, ServiceError
+from app.services.documents import ensure_context_cache
+from app.services.errors import DiffFetchError, GitHubPermanentError, ServiceError
 from app.services.prompts import (
     RuleSettings,
     build_plan_system_prompt,
@@ -72,7 +73,8 @@ class JobContext:
 
 # --------------------------------------------------------------------------- pure helpers
 def truncate_diff(diff: str, limit: int) -> tuple[str, bool]:
-    if len(diff) <= limit:
+    """Return (diff, truncated). ``limit <= 0`` means no truncation."""
+    if limit <= 0 or len(diff) <= limit:
         return diff, False
     cut = diff.rfind("\n", 0, limit)
     cut = cut if cut > 0 else limit
@@ -84,23 +86,19 @@ def truncate_diff(diff: str, limit: int) -> tuple[str, bool]:
     return diff[:cut] + note, True
 
 
+def effective_diff_limit(settings_limit: int, *caps: int) -> int:
+    """Combine the configured limit with optional secondary caps.
+
+    ``settings_limit <= 0`` means unlimited for reviews. When secondary caps are
+    provided (e.g. plan jobs), those caps still apply.
+    """
+    if caps:
+        return min(caps) if settings_limit <= 0 else min(settings_limit, *caps)
+    return settings_limit
+
+
 def count_changed_lines(diff: str) -> int:
     return sum(1 for line in diff.splitlines() if line.startswith(("+", "-")) and not line.startswith(("+++", "---")))
-
-
-def diff_stats(diff: str) -> tuple[int, int, int]:
-    """Return additions, deletions, and changed-file count parsed from a unified diff."""
-    additions = deletions = files = 0
-    for line in diff.splitlines():
-        if line.startswith("diff --git "):
-            files += 1
-        elif line.startswith("+") and not line.startswith("+++"):
-            additions += 1
-        elif line.startswith("-") and not line.startswith("---"):
-            deletions += 1
-    if files == 0 and (additions or deletions):
-        files = 1
-    return additions, deletions, files
 
 
 def _truncate_to(text: str, limit: int) -> str:
@@ -127,12 +125,14 @@ def assemble_comment(
         f"**Verdict:** {VERDICT_LABELS[parsed.verdict]}   ·   "
         f"**Health score:** {parsed.score:.1f}/10   ·   **Lines reviewed:** {lines_reviewed:,}",
     ]
-    if trigger in {"comment", "manual"} and requester:
+    if trigger == "comment" and requester:
         note = f": “{requester_note}”" if requester_note else ""
         header.append(f"_Requested by @{requester}{note}_")
     if diff_truncated:
         header.append(
             f"> ⚠️ This PR's diff exceeded {max_diff_chars:,} characters; only the first portion was reviewed."
+            if max_diff_chars > 0
+            else "> ⚠️ This PR's diff was truncated; only the first portion was reviewed."
         )
     head = "\n".join(header) + "\n\n"
     tail = f"\n\n---\n{FOOTER}"
@@ -148,6 +148,13 @@ def assemble_comment(
 def _load_rules(repo_full_name: str) -> RuleSettings:
     with SessionLocal() as db:
         return load_rule_settings(db, repo_full_name)
+
+
+async def _docs_for_prompt(repo_full_name: str) -> tuple[str | None, str | None]:
+    """Return (cached_content name, inline documents text for fallback)."""
+    with SessionLocal() as db:
+        cached, inline = await ensure_context_cache(db, repo_full_name)
+    return cached, (inline or None)
 
 
 def _load_review(review_id: int) -> tuple[str, int | None] | None:
@@ -180,73 +187,6 @@ def _mark_posted(review_id: int, comment_id: int) -> None:
 async def _post_review(ctx: JobContext, review_id: int, markdown: str) -> None:
     comment_id = await gh.post_issue_comment(ctx.installation_id, ctx.owner, ctx.repo, ctx.pr_number, markdown)
     await asyncio.to_thread(_mark_posted, review_id, comment_id)
-
-
-async def run_manual_review(
-    *,
-    repo_full_name: str,
-    pr_number: int,
-    title: str,
-    description: str,
-    author: str,
-    focus_note: str | None,
-    diff: str,
-) -> PRReview:
-    """Run the review pipeline on a diff the caller already has. Does not call GitHub or save."""
-    if not diff.strip():
-        raise EmptyDiffError("Diff is empty")
-
-    settings = get_settings()
-    lines_reviewed = count_changed_lines(diff)
-    diff_for_prompt, truncated = truncate_diff(diff, settings.MAX_DIFF_CHARS)
-    rules = await asyncio.to_thread(_load_rules, repo_full_name)
-    owner, repo = repo_full_name.split("/", 1)
-    additions, deletions, changed_files = diff_stats(diff)
-    pr = gh.PullRequest(
-        number=pr_number,
-        title=title,
-        body=description,
-        author=author,
-        base_ref="main",
-        head_ref="manual",
-        state="open",
-        draft=False,
-        additions=additions,
-        deletions=deletions,
-        changed_files=changed_files,
-    )
-    note = (focus_note or "").strip() or None
-    result = await gemini.generate(
-        build_review_system_prompt(rules, note),
-        build_pr_context(pr, owner, repo, diff_for_prompt),
-    )
-    parsed = parse_review(result.text)
-    markdown = assemble_comment(
-        parsed,
-        lines_reviewed=lines_reviewed,
-        trigger="manual",
-        requester=author if note else None,
-        requester_note=note,
-        diff_truncated=truncated,
-        max_chars=settings.MAX_COMMENT_CHARS,
-        max_diff_chars=settings.MAX_DIFF_CHARS,
-    )
-    review = PRReview(
-        repo_full_name=repo_full_name,
-        pr_number=pr_number,
-        pr_title=title[:500],
-        author=author,
-        summary=parsed.summary,
-        full_markdown=markdown,
-        verdict=parsed.verdict,
-        score=parsed.score,
-        lines_reviewed=lines_reviewed,
-        trigger="manual",
-        requester=author if note else None,
-        diff_truncated=truncated,
-        model=result.model,
-    )
-    return review
 
 
 async def handle_review(ctx: JobContext) -> None:
@@ -282,11 +222,14 @@ async def handle_review(ctx: JobContext) -> None:
     lines_reviewed = count_changed_lines(diff)
     diff_for_prompt, truncated = truncate_diff(diff, settings.MAX_DIFF_CHARS)
     rules = await asyncio.to_thread(_load_rules, ctx.repo_full_name)
+    cached, inline_docs = await _docs_for_prompt(ctx.repo_full_name)
 
     requester_note = ctx.data.get("requester_note") or None
     result = await gemini.generate(
         build_review_system_prompt(rules, requester_note),
         build_pr_context(pr, ctx.owner, ctx.repo, diff_for_prompt),
+        cached_content=cached,
+        inline_documents=inline_docs,
     )
     parsed = parse_review(result.text)
     trigger = ctx.data.get("trigger", "comment")
@@ -340,15 +283,18 @@ async def handle_plan(ctx: JobContext) -> None:
     except GitHubPermanentError as exc:
         raise DiffFetchError(str(exc), exc.status_code) from exc
 
-    limit = min(get_settings().MAX_DIFF_CHARS, PLAN_MAX_DIFF_CHARS)
+    limit = effective_diff_limit(get_settings().MAX_DIFF_CHARS, PLAN_MAX_DIFF_CHARS)
     diff_for_prompt, _ = truncate_diff(diff, limit)
     rules = await asyncio.to_thread(_load_rules, ctx.repo_full_name)
+    cached, inline_docs = await _docs_for_prompt(ctx.repo_full_name)
 
     try:
         result = await gemini.generate(
             build_plan_system_prompt(rules),
             build_pr_context(pr, ctx.owner, ctx.repo, diff_for_prompt),
             max_output_tokens=PLAN_MAX_OUTPUT_TOKENS,
+            cached_content=cached,
+            inline_documents=inline_docs,
         )
         body = f"{PLAN_BANNER}\n{result.text.strip()}\n\n---\n{PLAN_FOOTER}"
     except ServiceError as exc:

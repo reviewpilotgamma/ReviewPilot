@@ -1,0 +1,9 @@
+{
+  "track_id": "doc_cache_20261005",
+  "title": "Architecture docs + Gemini context caching",
+  "type": "feature",
+  "status": "in_progress",
+  "created": "2026-10-05",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}

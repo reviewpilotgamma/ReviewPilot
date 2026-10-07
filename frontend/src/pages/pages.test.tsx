@@ -1,9 +1,11 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it } from "vitest";
+import { routes } from "@/App";
 import History from "@/pages/History";
 import Landing from "@/pages/Landing";
-import RunReview from "@/pages/RunReview";
 import Rules from "@/pages/Rules";
 import { mockFetch, renderWithProviders } from "@/test/utils";
 import type { ReviewDetail, Rule } from "@/types/api";
@@ -61,34 +63,16 @@ describe("Landing page", () => {
   });
 });
 
-describe("Run review page", () => {
-  it("saves a pasted diff and opens the review", async () => {
-    mockFetch({
-      "POST /api/v1/reviews/manual": { ...REVIEW, id: 9, trigger: "manual" },
-    });
-    const user = userEvent.setup();
-    const { router } = renderWithProviders(<RunReview />);
-    await user.clear(screen.getByLabelText("Repository"));
-    await user.type(screen.getByLabelText("Repository"), "local/manual");
-    await user.type(screen.getByLabelText("Title"), "Add retries");
-    await user.type(screen.getByLabelText("Diff"), "diff --git a/a.py b/a.py\n+retry()");
-    await user.click(screen.getByRole("button", { name: "Run review" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/history"));
-    expect(router.state.location.search).toBe("?review=9");
-  });
-
-  it("shows the API error and stays on the form", async () => {
-    mockFetch({
-      "POST /api/v1/reviews/manual": () =>
-        new Response(JSON.stringify({ detail: "GEMINI_API_KEY is not set" }), { status: 503 }),
-    });
-    const user = userEvent.setup();
-    const { router } = renderWithProviders(<RunReview />);
-    await user.type(screen.getByLabelText("Title"), "Add retries");
-    await user.type(screen.getByLabelText("Diff"), "+retry()");
-    await user.click(screen.getByRole("button", { name: "Run review" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("GEMINI_API_KEY is not set");
-    expect(router.state.location.pathname).not.toBe("/history");
+describe("Removed Run review route", () => {
+  it("shows Not Found at /run", async () => {
+    mockFetch({});
+    const router = createMemoryRouter(routes, { initialEntries: ["/run"] });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RouterProvider router={router} future={{ v7_startTransition: true }} />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("Page not found")).toBeInTheDocument();
   });
 });
 

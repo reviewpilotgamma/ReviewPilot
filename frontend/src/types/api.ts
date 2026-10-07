@@ -67,6 +67,23 @@ export interface Preset {
   instructions: string;
 }
 
+export interface RepoDocument {
+  id: number;
+  repo_full_name: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  sha256: string;
+  char_count: number;
+  uploaded_at: string;
+}
+
+export interface RepoDocumentList {
+  items: RepoDocument[];
+  total: number;
+  cache_status: "none" | "inline" | "cached";
+}
+
 export interface Feedback {
   id: number;
   review_id: number;
@@ -103,15 +120,6 @@ export interface ReviewDetail extends ReviewListItem {
   diff_truncated: boolean;
   model: string;
   my_feedback: Feedback | null;
-}
-
-export interface ManualReviewInput {
-  repo: string;
-  pr_number: number;
-  title: string;
-  description: string;
-  focus_note: string;
-  diff: string;
 }
 
 export interface ReviewFilters {

@@ -61,14 +61,14 @@ export function Drawer({ open, onClose, title, children, footer }: DrawerProps) 
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 animate-fade-in bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-[rgba(23,48,44,0.35)] backdrop-blur-[3px]" onClick={onClose} aria-hidden />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative flex h-full w-full max-w-[720px] animate-slide-in flex-col border-l border-border bg-surface shadow-2xl"
+        className="relative flex h-full w-full max-w-[720px] animate-slide-in flex-col border-l border-border bg-bg shadow-2xl"
       >
         <header className="flex items-start justify-between gap-4 border-b border-border p-5">
           <div id={titleId} className="min-w-0 flex-1">
@@ -98,16 +98,16 @@ export function Modal({ open, onClose, title, children, actions }: ModalProps) {
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 animate-fade-in bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-[rgba(23,48,44,0.35)] backdrop-blur-[3px]" onClick={onClose} aria-hidden />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={clsx("glass relative w-full max-w-md animate-fade-in bg-surface p-6 shadow-2xl")}
+        className={clsx("glass relative w-full max-w-md animate-fade-in p-6 shadow-2xl")}
       >
-        <h2 id={titleId} className="text-lg font-semibold">
+        <h2 id={titleId} className="text-lg font-semibold text-ink">
           {title}
         </h2>
         <div className="mt-2 text-sm text-muted">{children}</div>
