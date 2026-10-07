@@ -6,6 +6,7 @@ import type {
   MetricsSummary,
   Page,
   Preset,
+  PromptTemplate,
   Rating,
   Replies,
   ReviewDetail,
@@ -55,6 +56,12 @@ export const rulesApi = {
     return http.upload<RepoDocumentUpload>(`/rules${repoPath(repo)}/documents${query}`, form);
   },
   deleteDocument: (repo: string, id: number) => http.delete<void>(`/rules${repoPath(repo)}/documents/${id}`),
+};
+
+export const promptApi = {
+  get: () => http.get<PromptTemplate>("/prompt"),
+  save: (template: string) => http.put<PromptTemplate>("/prompt", { template }),
+  reset: () => http.delete<void>("/prompt"),
 };
 
 export const reviewsApi = {

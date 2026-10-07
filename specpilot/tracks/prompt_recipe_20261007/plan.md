@@ -76,7 +76,7 @@
     - unauthenticated → 401
 - [x] 1.3 Quality gate: `ruff check .`, `pytest`. `a22c679`
 
-## Phase 2 — Backend: review context
+## Phase 2 — Backend: review context [checkpoint: 116fed2]
 
 - [x] 2.1 Record and expose `review_context` `83ccf79`
   - `_docs_for_prompt` returns `(cached, inline, filenames)`; update its callers in `handle_review`/`handle_plan`.
@@ -98,7 +98,7 @@
 
 ## Phase 3 — Frontend: recipe strip, prompt drawer, editor, reviewed-with
 
-- [ ] 3.1 Types, API and hooks — `types/api.ts` (`PromptTemplate`, `PromptSegment`, `ReviewContext`, and
+- [~] 3.1 Types, API and hooks — `types/api.ts` (`PromptTemplate`, `PromptSegment`, `ReviewContext`, and
   `ReviewDetail.review_context`), `services/endpoints.ts::promptApi` (`get`, `save`, `reset`),
   `hooks/usePrompt.ts` (`usePrompt`, `useSavePrompt`, `useResetPrompt`; invalidate `["prompt"]`).
   `lib/directives.ts`: remove the mirrored strings and `previewDirectives`, keep `appendPreset`; update

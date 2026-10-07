@@ -44,6 +44,18 @@ describe("api client", () => {
     expect((error as ApiError).message).toBe("Review not found");
   });
 
+  it("exposes structured validation reasons", async () => {
+    mockFetch({
+      "PUT /api/v1/prompt": new Response(JSON.stringify({ detail: { errors: ["Missing slot.", "Bad token."] } }), {
+        status: 422,
+      }),
+    });
+    const error = await http.put("/prompt", { template: "x" }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).details).toEqual(["Missing slot.", "Bad token."]);
+    expect((error as ApiError).message).toBe("Missing slot. Bad token.");
+  });
+
   it("returns undefined for 204", async () => {
     mockFetch({ "DELETE /api/v1/rules/a/b": () => new Response(null, { status: 204 }) });
     await expect(http.delete("/rules/a/b")).resolves.toBeUndefined();

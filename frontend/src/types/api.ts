@@ -122,12 +122,45 @@ export interface ReviewListItem {
   feedback_counts: FeedbackCounts;
 }
 
+/** What a review was reviewed with. Older reviews have none. */
+export interface ReviewContext {
+  prompt: "default" | "custom";
+  prompt_updated_at: string | null;
+  instructions_chars: number;
+  verbosity: Verbosity;
+  security: boolean;
+  documents: string[];
+  documents_mode: "cached" | "inline" | "none";
+  requester_note: boolean;
+}
+
 export interface ReviewDetail extends ReviewListItem {
   full_markdown: string;
   requester: string | null;
   diff_truncated: boolean;
   model: string;
+  review_context: ReviewContext | null;
   my_feedback: Feedback | null;
+}
+
+export type PromptSlotName = "custom_instructions" | "verbosity_directive" | "security_directive" | "requester_note";
+
+export type PromptSegment = { type: "text"; text: string } | { type: "slot"; name: PromptSlotName };
+
+/** The org-wide golden review prompt and the strings needed to assemble it client-side. */
+export interface PromptTemplate {
+  template: string;
+  is_default: boolean;
+  updated_at: string | null;
+  updated_by: string | null;
+  segments: PromptSegment[];
+  slots: { name: PromptSlotName; label: string; required: boolean }[];
+  directives: {
+    verbosity: Record<Verbosity, string>;
+    security: { enabled: string; disabled: string };
+  };
+  placeholders: { no_instructions: string; no_note: string };
+  warnings: string[];
 }
 
 export interface ReviewFilters {

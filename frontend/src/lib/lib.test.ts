@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { appendPreset, NO_INSTRUCTIONS, previewDirectives, SECURITY_DISABLED } from "./directives";
+import { promptFixture } from "@/test/prompt";
+import { appendPreset } from "./directives";
 import { formatPercent, formatScore, prettyJson, scoreTone } from "./format";
+import { assembledText, assemblePrompt, insertAt, validateTemplate } from "./prompt";
 
 describe("appendPreset", () => {
   it("inserts into empty instructions", () => {
@@ -15,18 +17,61 @@ describe("appendPreset", () => {
   });
 });
 
-describe("previewDirectives", () => {
-  it("mirrors backend directive mapping", () => {
-    const text = previewDirectives({
-      custom_instructions: "",
-      verbosity: "detailed",
-      review_mode: "on_demand",
-      enable_security: false,
-    });
-    expect(text).toContain(NO_INSTRUCTIONS);
-    expect(text).toContain("Be detailed");
-    expect(text).toContain(SECURITY_DISABLED);
-    expect(text).toContain("only when someone comments @review");
+describe("assemblePrompt", () => {
+  const form = { custom_instructions: "", verbosity: "detailed", review_mode: "on_demand", enable_security: false } as const;
+
+  it("fills slots with the repo's values in template order", () => {
+    const parts = assemblePrompt(promptFixture(), form);
+    const slots = parts.filter((part) => part.kind === "slot");
+    expect(slots.map((part) => part.kind === "slot" && part.label)).toEqual([
+      "Your instructions",
+      "Verbosity",
+      "Security",
+      "Requester note",
+    ]);
+    const text = assembledText(parts);
+    expect(text).toContain("(none — apply general architectural standards)");
+    expect(text).toContain("Verbosity: Be detailed.");
+    expect(text).toContain("Security: Security mode disabled.");
+    expect(text).toContain("(filled from the @review note)");
+    expect(text).not.toContain("{{");
+  });
+
+  it("uses unsaved instructions verbatim", () => {
+    const text = assembledText(assemblePrompt(promptFixture(), { ...form, custom_instructions: "  - Use {braces}  " }));
+    expect(text).toContain("Rules:\n- Use {braces}\n");
+  });
+});
+
+describe("validateTemplate", () => {
+  const prompt = promptFixture();
+
+  it("accepts the fixture template", () => {
+    expect(validateTemplate(prompt.template, prompt)).toEqual({ errors: [], warnings: [] });
+  });
+
+  it("mirrors the server's blocking rules", () => {
+    expect(validateTemplate("   ", prompt).errors).toEqual(["The prompt cannot be empty."]);
+    const { errors } = validateTemplate("Review {{tone}}", prompt);
+    expect(errors).toHaveLength(3);
+    expect(errors.join(" ")).toContain("Missing {{custom_instructions}}");
+    expect(errors.join(" ")).toContain("{{tone}}");
+    expect(errors.join(" ")).toContain("reviewpilot-meta");
+    expect(validateTemplate(`{{custom_instructions}} reviewpilot-meta ${"x".repeat(20_000)}`, prompt).errors[0]).toContain(
+      "longer than 20,000",
+    );
+  });
+
+  it("only warns about unused optional slots", () => {
+    const result = validateTemplate("{{custom_instructions}}\nreviewpilot-meta", prompt);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toHaveLength(3);
+  });
+});
+
+describe("insertAt", () => {
+  it("replaces the selection and moves the caret after the insert", () => {
+    expect(insertAt("abcdef", 2, 4, "{{x}}")).toEqual({ value: "ab{{x}}ef", caret: 7 });
   });
 });
 
