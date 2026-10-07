@@ -38,7 +38,7 @@
 
 ## Phase 1 — Backend: golden prompt service, storage, API
 
-- [~] 1.1 Golden prompt service + model + migration
+- [x] 1.1 Golden prompt service + model + migration `4954872`
   - `models/review_prompt.py::ReviewPrompt` (`id` int PK, `template` Text, `updated_at` UTCDateTime, `updated_by`
     String(100)); register it in `models/__init__`.
   - Migration `0003_prompt_and_context`: create `review_prompt`; add `pr_reviews.review_context` Text nullable;
@@ -61,7 +61,7 @@
       missing optional slots → warnings
     - save/load/reset round trip
     - `build_review_system_prompt` uses the override
-- [ ] 1.2 Prompt API — `schemas/prompt.py`, `api/prompt.py`, `main.py`
+- [~] 1.2 Prompt API — `schemas/prompt.py`, `api/prompt.py`, `main.py`
   - `PromptOut(template, is_default, updated_at, updated_by, segments, slots: list[{name, required, label}],
     directives: {verbosity: {concise, detailed}, security: {enabled, disabled}}, placeholders: {no_instructions,
     no_note})`. `PromptIn(template: str = Field(max_length=20_000))`.
