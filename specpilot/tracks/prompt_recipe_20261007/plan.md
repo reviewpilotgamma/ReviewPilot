@@ -96,7 +96,7 @@
       `review_context.prompt == "custom"`; large docs → `documents_mode == "cached"`; reset → `"default"`.
 - [x] 2.2 Quality gate: `ruff check .`, `pytest`. `83ccf79`
 
-## Phase 3 — Frontend: recipe strip, prompt drawer, editor, reviewed-with
+## Phase 3 — Frontend: recipe strip, prompt drawer, editor, reviewed-with [checkpoint: 019e0e2]
 
 - [x] 3.1 Types, API and hooks — `types/api.ts` (`PromptTemplate`, `PromptSegment`, `ReviewContext`, and `4ac264f`
   `ReviewDetail.review_context`), `services/endpoints.ts::promptApi` (`get`, `save`, `reset`),
