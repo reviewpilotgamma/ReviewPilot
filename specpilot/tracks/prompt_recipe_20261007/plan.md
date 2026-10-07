@@ -61,7 +61,7 @@
       missing optional slots → warnings
     - save/load/reset round trip
     - `build_review_system_prompt` uses the override
-- [~] 1.2 Prompt API — `schemas/prompt.py`, `api/prompt.py`, `main.py`
+- [x] 1.2 Prompt API — `schemas/prompt.py`, `api/prompt.py`, `main.py` `a22c679`
   - `PromptOut(template, is_default, updated_at, updated_by, segments, slots: list[{name, required, label}],
     directives: {verbosity: {concise, detailed}, security: {enabled, disabled}}, placeholders: {no_instructions,
     no_note})`. `PromptIn(template: str = Field(max_length=20_000))`.
@@ -74,7 +74,7 @@
     - PUT/DELETE as non-admin → 403
     - DELETE → default again
     - unauthenticated → 401
-- [ ] 1.3 Quality gate: `ruff check .`, `pytest`.
+- [x] 1.3 Quality gate: `ruff check .`, `pytest`. `a22c679`
 
 ## Phase 2 — Backend: review context
 
