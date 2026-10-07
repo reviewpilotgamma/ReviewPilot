@@ -36,6 +36,7 @@ class ReviewListItem(ORMModel):
     created_at: datetime
     trigger: str
     pr_url: str
+    diff_truncated: bool = False
     feedback_counts: dict[str, int] = Field(default_factory=lambda: {"helpful": 0, "unhelpful": 0})
 
 
@@ -55,7 +56,6 @@ class ReviewContext(BaseModel):
 class ReviewDetail(ReviewListItem):
     full_markdown: str
     requester: str | None
-    diff_truncated: bool
     model: str
     review_context: ReviewContext | None = None
     my_feedback: FeedbackOut | None = None

@@ -119,6 +119,8 @@ export interface ReviewListItem {
   created_at: string;
   trigger: string;
   pr_url: string;
+  /** True when part of the diff was not reviewed (cut, failed batch, or time limit). */
+  diff_truncated: boolean;
   feedback_counts: FeedbackCounts;
 }
 
@@ -137,7 +139,6 @@ export interface ReviewContext {
 export interface ReviewDetail extends ReviewListItem {
   full_markdown: string;
   requester: string | null;
-  diff_truncated: boolean;
   model: string;
   review_context: ReviewContext | null;
   my_feedback: Feedback | null;
@@ -187,6 +188,8 @@ export interface TrendPoint {
   avg_score: number | null;
 }
 
+export type JobErrorCode = "diff_too_large";
+
 export interface Job {
   id: number;
   kind: "review" | "welcome" | "plan";
@@ -194,6 +197,8 @@ export interface Job {
   attempts: number;
   max_attempts: number;
   last_error: string | null;
+  /** Stable code for errors the UI explains. */
+  error_code: JobErrorCode | null;
   review_id: number | null;
   next_run_at: string;
   updated_at: string;

@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Radio } from "lucide-react";
+import { ChevronDown, ChevronRight, FileWarning, Radio } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -11,10 +11,29 @@ import { useWorkspace } from "@/hooks/useAuth";
 import { useEvents } from "@/hooks/useEvents";
 import { eventsApi } from "@/services/endpoints";
 import { absoluteTime, prettyJson, relativeTime } from "@/lib/format";
-import type { EventStatus, WebhookEvent } from "@/types/api";
+import type { EventStatus, Job, WebhookEvent } from "@/types/api";
 
 const PAGE = 50;
 const STATUSES: EventStatus[] = ["queued", "processed", "ignored", "failed"];
+
+function JobError({ job }: { job: Job }) {
+  if (!job.last_error) return null;
+  if (job.error_code === "diff_too_large") {
+    return (
+      <div className="mt-2 rounded border border-amber/30 bg-amber-soft p-2 text-xs text-amber">
+        <p className="flex items-center gap-1.5 font-medium">
+          <FileWarning className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Diff too large for GitHub. Not reviewed. Split the PR into smaller ones.
+        </p>
+        <details className="mt-1">
+          <summary className="cursor-pointer text-muted">Details</summary>
+          <p className="mt-1 break-words font-mono text-muted">{job.last_error}</p>
+        </details>
+      </div>
+    );
+  }
+  return <p className="mt-2 break-words rounded bg-rose-soft p-2 font-mono text-xs text-rose">{job.last_error}</p>;
+}
 
 function EventDetails({ event }: { event: WebhookEvent }) {
   return (
@@ -49,9 +68,7 @@ function EventDetails({ event }: { event: WebhookEvent }) {
                     </>
                   )}
                 </p>
-                {job.last_error && (
-                  <p className="mt-2 break-words rounded bg-rose-soft p-2 font-mono text-xs text-rose">{job.last_error}</p>
-                )}
+                <JobError job={job} />
               </li>
             ))}
           </ul>

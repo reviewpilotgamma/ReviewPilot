@@ -1,6 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import { MarkdownView } from "@/components/diff/MarkdownView";
-import { VerdictBadge } from "@/components/ui/Badge";
+import { PartialBadge, VerdictBadge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Overlay";
 import { ErrorState } from "@/components/ui/States";
 import { Spinner } from "@/components/ui/Spinner";
@@ -20,6 +20,7 @@ export function ReviewDrawer({ reviewId, onClose }: { reviewId: number | null; o
       <h2 className="text-lg font-semibold leading-snug">{review.pr_title}</h2>
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
         <VerdictBadge verdict={review.verdict} />
+        {review.diff_truncated && <PartialBadge />}
         <span className="font-medium text-ink">{formatScore(review.score)}</span>
         <span>·</span>
         <span>{absoluteTime(review.created_at)}</span>

@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { FileWarning } from "lucide-react";
 import type { ReactNode } from "react";
 import { VERDICT_LABEL } from "@/lib/format";
 import type { EventStatus, JobStatus, Verdict } from "@/types/api";
@@ -31,6 +32,18 @@ const VERDICT_TONES: Record<Verdict, Tone> = { passed: "emerald", warning: "ambe
 
 export function VerdictBadge({ verdict }: { verdict: Verdict }) {
   return <Badge tone={VERDICT_TONES[verdict]}>{VERDICT_LABEL[verdict]}</Badge>;
+}
+
+/** Shown when part of a PR's diff was not reviewed (cut, failed batch, or time limit). */
+export function PartialBadge() {
+  return (
+    <span title="Part of this PR's diff was not reviewed. The review lists the files.">
+      <Badge tone="amber">
+        <FileWarning className="h-3 w-3" aria-hidden />
+        Partially reviewed
+      </Badge>
+    </span>
+  );
 }
 
 const STATUS_TONES: Record<EventStatus | JobStatus, Tone> = {
