@@ -147,6 +147,7 @@ async def save_document(
 
     text = extract_text(name, data)
     digest = hashlib.sha256(data).hexdigest()
+    hash_before = documents_content_hash(db, key)
 
     current = next((d for d in existing if d.filename == name), None)
     if current is None:
@@ -161,7 +162,8 @@ async def save_document(
     current.uploaded_by_user_id = user_id
     db.commit()
     db.refresh(current)
-    await invalidate_context_cache(db, key)
+    if documents_content_hash(db, key) != hash_before:
+        await invalidate_context_cache(db, key)
     return current
 
 

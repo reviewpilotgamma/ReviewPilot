@@ -19,7 +19,7 @@
 
 ## Phase 1 — Backend
 
-- [~] 1.1 Service: build-on-demand and cache state — `app/services/documents.py`
+- [x] 1.1 Service: build-on-demand and cache state — `app/services/documents.py` `4f9cdbc`
   - Extract the create-and-store block of `ensure_context_cache` into `async _build_cache(db, key, docs_text,
     content_hash) -> str`. It raises `GeminiNotConfigured`/`GeminiPermanentError`/`GeminiTransientError`.
     `ensure_context_cache` keeps its current behavior: it catches these and returns `(None, docs_text)`.
@@ -42,7 +42,7 @@
     - create 500 → `pending` with an error
     - no key → `pending` with "not configured"
     - `cache_state` covers all four values
-- [ ] 1.2 API — `app/api/documents.py`, `app/schemas/documents.py`
+- [~] 1.2 API — `app/api/documents.py`, `app/schemas/documents.py`
   - `DocumentUploadOut(DocumentOut)` adds `cache_status: Literal["none","inline","cached","pending"]` and
     `cache_error: str | None`. `DocumentListOut.cache_status` uses the same `Literal`.
   - `upload_document(..., warm: bool = Query(True))`: after `save_document`, `state = await
