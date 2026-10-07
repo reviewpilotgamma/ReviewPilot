@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.core.config import reload_settings
+from app.services.diff_batching import CHARS_PER_TOKEN
 from app.services.reviewer import count_changed_lines
 from tests.e2e.diffs import SIZE_TIERS, scenario_for_tier
 from tests.e2e.harness import budget_scale
@@ -12,6 +13,7 @@ from tests.e2e.harness import budget_scale
 # Seconds for the whole pipeline (ingest → comment posted) with Gemini mocked. Generous on purpose.
 PERF_BUDGETS = {"small": 1.0, "medium": 2.0, "large": 5.0, "very_large": 15.0}
 TRUNCATED_LIMIT = 200_000
+BATCH_CHARS = 100_000 * CHARS_PER_TOKEN  # DIFF_BATCH_TOKENS default
 
 
 def assert_within_budget(tier: str, result) -> None:
@@ -32,8 +34,17 @@ async def test_pipeline_scales_with_diff_size(pipeline, tier):
     [review] = pipeline.reviews()
     assert review.lines_reviewed == count_changed_lines(scenario.diff)
     assert not review.diff_truncated
-    prompt_chars = len(pipeline.llm.user_content(pipeline.llm.requests[-1]))
-    assert prompt_chars > len(scenario.diff)  # whole diff sent (MAX_DIFF_CHARS=0)
+    contents = [pipeline.llm.user_content(r) for r in pipeline.llm.requests]
+    if len(scenario.diff) <= BATCH_CHARS:
+        assert len(contents) == 1  # one request, whole diff (MAX_DIFF_CHARS=0)
+        batch_contents = contents
+    else:
+        batch_contents = contents[:-1]  # the last request merges the batch reviews
+        assert len(batch_contents) > 1
+        assert all(len(c) < BATCH_CHARS + 20_000 for c in batch_contents)
+        assert "partial reviews follow" in contents[-1]
+    prompt_chars = sum(len(c) for c in batch_contents)
+    assert prompt_chars > len(scenario.diff)  # every line of the diff reached the model
     result = pipeline.record(scenario, delivery, label=f"tier_{tier}", prompt_chars=prompt_chars, max_diff_chars=0)
     assert_within_budget(tier, result)
 

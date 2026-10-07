@@ -11,7 +11,7 @@ from app.core.config import reload_settings
 from app.core.database import SessionLocal, utcnow
 from app.models import Job
 from app.services import worker
-from tests.e2e.diffs import PLANTED_SCENARIOS
+from tests.e2e.diffs import PLANTED_SCENARIOS, scenario_for_tier
 
 FAILURE_PREFIX = "⚠️ ReviewPilot couldn't complete the architectural review"
 SCENARIO = PLANTED_SCENARIOS["no_timeout_retry"]
@@ -76,17 +76,18 @@ async def test_comment_post_failure_reposts_stored_review_without_second_llm_cal
     assert pipeline.jobs(delivery)[0].status == "succeeded"
 
 
-@pytest.mark.parametrize("status", [404, 406])
-async def test_diff_fetch_failure_posts_failure_comment(pipeline, status):
+@pytest.mark.parametrize(("status", "error"), [(404, "DiffFetchError"), (406, "DiffTooLargeError")])
+async def test_diff_fetch_failure_posts_failure_comment(pipeline, status, error):
     pipeline.github.fail_next("diff", status)
     delivery = pipeline.open_pr(63, SCENARIO)
 
     await pipeline.drain()
 
     [job] = pipeline.jobs(delivery)
-    assert job.status == "failed" and "DiffFetchError" in job.last_error
+    assert job.status == "failed" and job.attempts == 1 and job.last_error.startswith(f"{error}:")
     [comment] = pipeline.github.comments_for(63)
     assert comment.startswith(FAILURE_PREFIX)
+    assert ("larger than GitHub allows" in comment) is (status == 406)
     assert pipeline.llm.generate_calls == 0
 
 
@@ -129,3 +130,19 @@ async def test_interrupted_job_is_recovered_after_restart(pipeline):
     [job] = pipeline.jobs(delivery)
     assert (job.status, job.attempts) == ("succeeded", 2)
     assert len(pipeline.reviews()) == 1 and len(pipeline.github.comments_for(66)) == 1
+
+
+async def test_failed_batch_gives_partial_review_without_requeue(pipeline):
+    scenario = scenario_for_tier("large")  # two batches at the default batch size
+    pipeline.llm.fail_next(400)  # the first batch request fails permanently
+    delivery = pipeline.open_pr(66, scenario)
+
+    await pipeline.drain()
+
+    [job] = pipeline.jobs(delivery)
+    assert (job.status, job.attempts) == ("succeeded", 1)
+    assert pipeline.llm.generate_calls == 3  # two batches (no retry for a permanent error) + one merge
+    [review] = pipeline.reviews()
+    assert review.diff_truncated
+    [comment] = pipeline.github.comments_for(66)
+    assert "Partially reviewed:" in comment and "Not reviewed: `src/" in comment

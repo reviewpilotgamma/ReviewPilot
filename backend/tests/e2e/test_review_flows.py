@@ -180,7 +180,7 @@ async def test_truncation_with_max_diff_chars(pipeline, monkeypatch):
     pipeline.record(scenario, delivery, max_diff_chars=2000)
 
 
-async def test_unlimited_diff_is_sent_whole(pipeline):
+async def test_unlimited_large_diff_is_batched_and_reviewed_whole(pipeline):
     scenario = scenario_for_tier("large")
     pipeline.open_pr(15, scenario)
 
@@ -188,9 +188,12 @@ async def test_unlimited_diff_is_sent_whole(pipeline):
 
     [review] = pipeline.reviews()
     assert not review.diff_truncated
-    user_content = pipeline.llm.user_content(pipeline.llm.requests[-1])
-    assert scenario.diff.rstrip().splitlines()[-1] in user_content
-    assert "DIFF TRUNCATED" not in user_content
+    *batches, merge = [pipeline.llm.user_content(r) for r in pipeline.llm.requests]
+    assert len(batches) == 2 and "partial reviews follow" in merge
+    assert scenario.diff.rstrip().splitlines()[-1] in batches[-1]
+    assert all("DIFF TRUNCATED" not in c and f"of {len(batches)}." in c for c in batches)
+    [comment] = pipeline.github.comments_for(15)
+    assert "Partially reviewed" not in comment
 
 
 async def test_long_llm_output_is_truncated_to_comment_limit(pipeline):
