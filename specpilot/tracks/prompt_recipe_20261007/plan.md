@@ -36,7 +36,7 @@
   `cached_content`, `inline` when inline docs, else `none`), document filenames, the requester note, and
   `load_effective` metadata. Serialized to `review_context` as JSON.
 
-## Phase 1 — Backend: golden prompt service, storage, API
+## Phase 1 — Backend: golden prompt service, storage, API [checkpoint: bc0f865]
 
 - [x] 1.1 Golden prompt service + model + migration `4954872`
   - `models/review_prompt.py::ReviewPrompt` (`id` int PK, `template` Text, `updated_at` UTCDateTime, `updated_by`
@@ -78,7 +78,7 @@
 
 ## Phase 2 — Backend: review context
 
-- [ ] 2.1 Record and expose `review_context`
+- [~] 2.1 Record and expose `review_context`
   - `_docs_for_prompt` returns `(cached, inline, filenames)`; update its callers in `handle_review`/`handle_plan`.
   - `handle_review` builds the context dict (see Design notes) and sets `PRReview.review_context =
     json.dumps(...)`. `PRReview` gets `review_context: Mapped[str | None]`.

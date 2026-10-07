@@ -101,3 +101,31 @@ def test_feedback_validation_and_tenant(client, login, seeded):
     login()
     assert client.post(f"/api/v1/reviews/{seeded[0].id}/feedback", json={"rating": "meh"}).status_code == 422
     assert client.post(f"/api/v1/reviews/{seeded[3].id}/feedback", json={"rating": "helpful"}).status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("stored", "expected"),
+    [
+        (None, None),
+        ("{not json", None),
+        ('{"prompt": "bogus"}', None),
+        (
+            '{"prompt": "custom", "prompt_updated_at": "2026-10-07T10:00:00+00:00", "instructions_chars": 42,'
+            ' "verbosity": "detailed", "security": false, "documents": ["arch.md"], "documents_mode": "cached",'
+            ' "requester_note": true}',
+            {"prompt": "custom", "documents": ["arch.md"], "documents_mode": "cached", "instructions_chars": 42},
+        ),
+    ],
+)
+def test_review_detail_exposes_review_context(client, login, db, stored, expected):
+    login()
+    review = add_review(db)
+    review.review_context = stored
+    db.commit()
+
+    context = client.get(f"/api/v1/reviews/{review.id}").json()["review_context"]
+
+    if expected is None:
+        assert context is None
+    else:
+        assert {key: context[key] for key in expected} == expected

@@ -6,6 +6,7 @@ Handlers are async; all database access runs in worker threads via ``asyncio.to_
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -15,7 +16,7 @@ from app.core.database import SessionLocal
 from app.models import Job, PRReview
 from app.services import gemini, golden_prompt
 from app.services import github_app as gh
-from app.services.documents import ensure_context_cache
+from app.services.documents import ensure_context_cache, list_documents
 from app.services.errors import DiffFetchError, GitHubPermanentError, ServiceError
 from app.services.prompts import (
     RuleSettings,
@@ -155,11 +156,34 @@ def _load_prompt() -> golden_prompt.EffectivePrompt:
         return golden_prompt.load_effective(db)
 
 
-async def _docs_for_prompt(repo_full_name: str) -> tuple[str | None, str | None]:
-    """Return (cached_content name, inline documents text for fallback)."""
+async def _docs_for_prompt(repo_full_name: str) -> tuple[str | None, str | None, list[str]]:
+    """Return (cached_content name, inline documents text for fallback, document filenames)."""
     with SessionLocal() as db:
         cached, inline = await ensure_context_cache(db, repo_full_name)
-    return cached, (inline or None)
+        filenames = sorted(doc.filename for doc in list_documents(db, repo_full_name))
+    return cached, (inline or None), filenames
+
+
+def build_review_context(
+    prompt: golden_prompt.EffectivePrompt,
+    rules: RuleSettings,
+    *,
+    cached: str | None,
+    inline_docs: str | None,
+    filenames: list[str],
+    requester_note: str | None,
+) -> dict[str, Any]:
+    """What this review was reviewed with. Filenames only; never document content."""
+    return {
+        "prompt": "default" if prompt.is_default else "custom",
+        "prompt_updated_at": prompt.updated_at.isoformat() if prompt.updated_at else None,
+        "instructions_chars": len(rules.custom_instructions.strip()),
+        "verbosity": rules.verbosity,
+        "security": rules.enable_security,
+        "documents": filenames if (cached or inline_docs) else [],
+        "documents_mode": "cached" if cached else "inline" if inline_docs else "none",
+        "requester_note": bool(requester_note),
+    }
 
 
 def _load_review(review_id: int) -> tuple[str, int | None] | None:
@@ -228,7 +252,7 @@ async def handle_review(ctx: JobContext) -> None:
     diff_for_prompt, truncated = truncate_diff(diff, settings.MAX_DIFF_CHARS)
     rules = await asyncio.to_thread(_load_rules, ctx.repo_full_name)
     prompt = await asyncio.to_thread(_load_prompt)
-    cached, inline_docs = await _docs_for_prompt(ctx.repo_full_name)
+    cached, inline_docs, filenames = await _docs_for_prompt(ctx.repo_full_name)
 
     requester_note = ctx.data.get("requester_note") or None
     result = await gemini.generate(
@@ -264,6 +288,16 @@ async def handle_review(ctx: JobContext) -> None:
         requester=ctx.data.get("requester"),
         diff_truncated=truncated,
         model=result.model,
+        review_context=json.dumps(
+            build_review_context(
+                prompt,
+                rules,
+                cached=cached,
+                inline_docs=inline_docs,
+                filenames=filenames,
+                requester_note=requester_note,
+            )
+        ),
     )
     review_id = await asyncio.to_thread(_save_review, ctx.job_id, review)
     await _post_review(ctx, review_id, markdown)
@@ -292,7 +326,7 @@ async def handle_plan(ctx: JobContext) -> None:
     limit = effective_diff_limit(get_settings().MAX_DIFF_CHARS, PLAN_MAX_DIFF_CHARS)
     diff_for_prompt, _ = truncate_diff(diff, limit)
     rules = await asyncio.to_thread(_load_rules, ctx.repo_full_name)
-    cached, inline_docs = await _docs_for_prompt(ctx.repo_full_name)
+    cached, inline_docs, _ = await _docs_for_prompt(ctx.repo_full_name)
 
     try:
         result = await gemini.generate(

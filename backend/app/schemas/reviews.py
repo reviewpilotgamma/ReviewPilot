@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.common import ORMModel, Rating, Verdict
 
@@ -37,9 +39,35 @@ class ReviewListItem(ORMModel):
     feedback_counts: dict[str, int] = Field(default_factory=lambda: {"helpful": 0, "unhelpful": 0})
 
 
+class ReviewContext(BaseModel):
+    """What a review was reviewed with: golden prompt version, instructions and documents (filenames only)."""
+
+    prompt: Literal["default", "custom"]
+    prompt_updated_at: datetime | None = None
+    instructions_chars: int = 0
+    verbosity: str = "concise"
+    security: bool = True
+    documents: list[str] = Field(default_factory=list)
+    documents_mode: Literal["cached", "inline", "none"] = "none"
+    requester_note: bool = False
+
+
 class ReviewDetail(ReviewListItem):
     full_markdown: str
     requester: str | None
     diff_truncated: bool
     model: str
+    review_context: ReviewContext | None = None
     my_feedback: FeedbackOut | None = None
+
+    @field_validator("review_context", mode="before")
+    @classmethod
+    def _parse_context(cls, value: object) -> object:
+        """Stored as JSON text; anything unreadable (or older reviews) becomes ``None``."""
+        if value is None or isinstance(value, (dict, ReviewContext)):
+            return value
+        try:
+            data = json.loads(value)  # type: ignore[arg-type]
+            return ReviewContext.model_validate(data)
+        except (TypeError, ValueError):
+            return None
