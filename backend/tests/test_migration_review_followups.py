@@ -47,6 +47,6 @@ def test_upgrade_tolerates_columns_from_an_interrupted_run(tmp_path):
         conn.execute("ALTER TABLE pr_reviews ADD COLUMN head_sha VARCHAR(40)")
         conn.execute("ALTER TABLE pr_reviews ADD COLUMN previous_review_id INTEGER")
 
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, "0008_review_followups")
     with sqlite3.connect(path) as conn:
         assert conn.execute("SELECT version_num FROM alembic_version").fetchone() == ("0008_review_followups",)

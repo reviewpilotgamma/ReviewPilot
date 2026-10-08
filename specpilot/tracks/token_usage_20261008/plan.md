@@ -30,10 +30,10 @@ TS type), `ReviewsTable`, `History`.
 
 ## Phase 1: Capture and store token usage
 
-- [ ] **1.1 Gemini usage.** Add `tokens_used: int | None = None` to `GeminiResult`; add `_usage_tokens(usage)`
+- [x] **1.1 Gemini usage.** `4ca6ab9` Add `tokens_used: int | None = None` to `GeminiResult`; add `_usage_tokens(usage)`
   (`totalTokenCount`, else the sum of prompt/candidates/thoughts counts, else `None`); set it in `generate()`.
   Tests: total present, fallback sum, missing usage → `None`. Gate: `ruff check .`, `pytest`.
-- [ ] **1.2 Column and migration.** Add `PRReview.tokens_used` and `0009_review_tokens` (add the column only when
+- [~] **1.2 Column and migration.** Add `PRReview.tokens_used` and `0009_review_tokens` (add the column only when
   missing; downgrade drops it with SQLite foreign keys off, like `0008`). Test upgrade/downgrade and that feedback
   rows survive. Gate: `ruff check .`, `pytest`.
 - [ ] **1.3 Reviewer totals.** Add `sum_tokens(*counts) -> int | None`. `BatchOutcome.tokens`; `_merge_reviews`
