@@ -93,10 +93,11 @@ interface DialogProps {
   description?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  size?: "md" | "xl";
 }
 
 /** A large centered popup for editing content; `Modal` stays for short confirmations. */
-export function Dialog({ open, onClose, title, description, children, footer }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, footer, size = "md" }: DialogProps) {
   const panelRef = useDialog(open, onClose);
   const titleId = useId();
   if (!open) return null;
@@ -109,7 +110,10 @@ export function Dialog({ open, onClose, title, description, children, footer }: 
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative flex max-h-[90vh] w-full max-w-3xl animate-fade-in flex-col rounded-2xl border border-border bg-bg shadow-2xl"
+        className={clsx(
+          "relative flex max-h-[90vh] w-full animate-fade-in flex-col rounded-2xl border border-border bg-bg shadow-2xl",
+          size === "xl" ? "max-w-6xl" : "max-w-3xl",
+        )}
       >
         <header className="flex items-start justify-between gap-4 border-b border-border p-5">
           <div className="min-w-0 flex-1">

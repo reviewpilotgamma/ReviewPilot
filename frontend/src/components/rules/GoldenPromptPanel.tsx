@@ -1,8 +1,8 @@
-import { Copy, FileText, Info, Lock, PencilLine, RotateCcw, Save } from "lucide-react";
+import { Copy, FileText, Info, Lock, Maximize2, PencilLine, RotateCcw, Save } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Overlay";
+import { Dialog, Modal } from "@/components/ui/Overlay";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState } from "@/components/ui/States";
 import { useToast } from "@/hooks/useAuth";
@@ -190,6 +190,7 @@ export function GoldenPromptPanel({ repo, form, docs, prompt: query, isAdmin, on
   const [draft, setDraft] = useState("");
   const [serverErrors, setServerErrors] = useState<string[]>([]);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const prompt = query.data;
   const dirty = editing && prompt !== undefined && draft !== prompt.template;
   const clientErrors = prompt && editing ? validateTemplate(draft, prompt).errors : [];
@@ -229,25 +230,16 @@ export function GoldenPromptPanel({ repo, form, docs, prompt: query, isAdmin, on
       },
     });
 
-  const title = (
-    <div className="space-y-1">
-      <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-ink">
-        <Lock className="h-4 w-4 text-violet" aria-hidden />
-        {editing ? "Edit golden prompt" : "Golden prompt"}
-        {prompt && (
-          <Badge tone={prompt.is_default ? "gray" : "violet"}>
-            {prompt.is_default
-              ? "Default"
-              : `Edited${prompt.updated_at ? ` ${shortDate(prompt.updated_at)}` : ""}${prompt.updated_by ? ` by ${prompt.updated_by}` : ""}`}
-          </Badge>
-        )}
-      </h2>
-      <p className="text-sm text-muted">
-        {editing
-          ? "The system prompt behind every PR review, for all repositories."
-          : `The exact system prompt sent for every PR review of ${repo}.`}
-      </p>
-    </div>
+  const heading = editing ? "Edit golden prompt" : "Golden prompt";
+  const description = editing
+    ? "The system prompt behind every PR review, for all repositories."
+    : `The exact system prompt sent for every PR review of ${repo}.`;
+  const badge = prompt && (
+    <Badge tone={prompt.is_default ? "gray" : "violet"}>
+      {prompt.is_default
+        ? "Default"
+        : `Edited${prompt.updated_at ? ` ${shortDate(prompt.updated_at)}` : ""}${prompt.updated_by ? ` by ${prompt.updated_by}` : ""}`}
+    </Badge>
   );
 
   const footer = prompt && (
@@ -293,34 +285,69 @@ export function GoldenPromptPanel({ repo, form, docs, prompt: query, isAdmin, on
     </div>
   );
 
+  const body = (
+    <>
+      {query.isLoading && (
+        <div className="flex justify-center py-16">
+          <Spinner className="h-6 w-6" />
+        </div>
+      )}
+      {query.isError && <ErrorState message="Could not load the golden prompt." onRetry={() => void query.refetch()} />}
+      {prompt &&
+        (editing ? (
+          <PromptEditor
+            prompt={prompt}
+            draft={draft}
+            setDraft={(value) => {
+              setDraft(value);
+              setServerErrors([]);
+            }}
+            serverErrors={serverErrors}
+          />
+        ) : (
+          <PromptView prompt={prompt} form={form} docs={docs} />
+        ))}
+    </>
+  );
+
   return (
     <>
-      <section className="glass flex flex-col">
-        <header className="border-b border-border p-5">{title}</header>
-        <div className="p-5">
-        {query.isLoading && (
-          <div className="flex justify-center py-16">
-            <Spinner className="h-6 w-6" />
+      {/* On large screens the panel fills its grid cell, so the sidebar sets the height and the prompt scrolls. */}
+      <section className="glass flex flex-col lg:absolute lg:inset-0">
+        <header className="flex items-start justify-between gap-4 border-b border-border p-5">
+          <div className="min-w-0 space-y-1">
+            <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-ink">
+              <Lock className="h-4 w-4 text-violet" aria-hidden />
+              {heading}
+              {badge}
+            </h2>
+            <p className="text-sm text-muted">{description}</p>
           </div>
-        )}
-        {query.isError && <ErrorState message="Could not load the golden prompt." onRetry={() => void query.refetch()} />}
-        {prompt &&
-          (editing ? (
-            <PromptEditor
-              prompt={prompt}
-              draft={draft}
-              setDraft={(value) => {
-                setDraft(value);
-                setServerErrors([]);
-              }}
-              serverErrors={serverErrors}
-            />
-          ) : (
-            <PromptView prompt={prompt} form={form} docs={docs} />
-          ))}
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Expand golden prompt"
+            title="Expand"
+            icon={<Maximize2 className="h-4 w-4" />}
+            disabled={expanded}
+            onClick={() => setExpanded(true)}
+          />
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          {expanded ? <p className="text-sm text-muted">Showing in the expanded view.</p> : body}
         </div>
-        {footer && <footer className="border-t border-border p-5">{footer}</footer>}
+        {footer && !expanded && <footer className="border-t border-border p-5">{footer}</footer>}
       </section>
+      <Dialog
+        open={expanded}
+        onClose={() => setExpanded(false)}
+        size="xl"
+        title={heading}
+        description={description}
+        footer={footer}
+      >
+        {body}
+      </Dialog>
       <Modal
         open={confirmReset}
         onClose={() => setConfirmReset(false)}

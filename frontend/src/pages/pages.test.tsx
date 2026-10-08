@@ -309,6 +309,22 @@ describe("Golden prompt panel", () => {
     expect(screen.queryByRole("button", { name: "Edit golden prompt" })).toBeNull();
   });
 
+  it("expands the golden prompt into a wide popup and back", async () => {
+    mockFetch(RULES_ROUTES);
+    const user = userEvent.setup();
+    renderWithProviders(<Rules />, { path: "/rules" });
+
+    await user.click(await screen.findByRole("button", { name: "Expand golden prompt" }));
+    const dialog = screen.getByRole("dialog", { name: "Golden prompt" });
+    expect(dialog.querySelector('mark[data-slot="custom_instructions"]')).not.toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Copy" })).toBeInTheDocument();
+    expect(screen.getByText("Showing in the expanded view.")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.querySelector('mark[data-slot="custom_instructions"]')).not.toBeNull();
+  });
+
   it("lets an admin edit the golden prompt inline with validation before saving", async () => {
     let saved: string | null = null;
     mockFetch({

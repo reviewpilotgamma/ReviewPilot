@@ -27,21 +27,23 @@ function RulesWorkspace({ repo, rule, onDirtyChange }: RulesWorkspaceProps) {
   const close = () => setOpen(null);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
+    <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
       <RulesSidebar
         repo={repo}
         rule={rule}
         onOpenInstructions={() => setOpen("instructions")}
         onOpenDocuments={() => setOpen("documents")}
       />
-      <GoldenPromptPanel
-        repo={repo}
-        form={form}
-        docs={docs.data}
-        prompt={prompt}
-        isAdmin={Boolean(user?.is_admin)}
-        onDirtyChange={onDirtyChange}
-      />
+      <div className="relative min-w-0">
+        <GoldenPromptPanel
+          repo={repo}
+          form={form}
+          docs={docs.data}
+          prompt={prompt}
+          isAdmin={Boolean(user?.is_admin)}
+          onDirtyChange={onDirtyChange}
+        />
+      </div>
       <InstructionsDialog open={open === "instructions"} onClose={close} repo={repo} rule={rule} />
       <DocumentsDialog open={open === "documents"} onClose={close} repo={repo} />
     </div>
