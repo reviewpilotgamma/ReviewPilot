@@ -32,6 +32,8 @@ class ReviewListItem(ORMModel):
     verdict: Verdict
     score: float
     lines_reviewed: int
+    # Gemini tokens the review used; None for older reviews.
+    tokens_used: int | None = None
     summary: str
     created_at: datetime
     trigger: str

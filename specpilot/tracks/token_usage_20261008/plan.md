@@ -36,11 +36,11 @@ TS type), `ReviewsTable`, `History`.
 - [x] **1.2 Column and migration.** `99303ae` Add `PRReview.tokens_used` and `0009_review_tokens` (add the column only when
   missing; downgrade drops it with SQLite foreign keys off, like `0008`). Test upgrade/downgrade and that feedback
   rows survive. Gate: `ruff check .`, `pytest`.
-- [~] **1.3 Reviewer totals.** Add `sum_tokens(*counts) -> int | None`. `BatchOutcome.tokens`; `_merge_reviews`
+- [x] **1.3 Reviewer totals.** `0989811` Add `sum_tokens(*counts) -> int | None`. `BatchOutcome.tokens`; `_merge_reviews`
   returns the merge call's tokens; `BatchedReview.tokens_used` = succeeded batches + merge; `handle_review` sets
   `PRReview(tokens_used=...)` on both paths. Tests: single call, batches + merge, merge fallback, failed batch
   excluded. Gate: `ruff check .`, `pytest`.
-- [ ] **1.4 API field.** Add `tokens_used` to `ReviewListItem`. Test the list endpoint returns it (value and
+- [~] **1.4 API field.** Add `tokens_used` to `ReviewListItem`. Test the list endpoint returns it (value and
   `null`). Gate: `ruff check .`, `pytest`.
 
 ## Phase 2: Tokens column on Review History
