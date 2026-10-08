@@ -24,8 +24,8 @@
 
 ## Phase 1: Backend
 
-- [~] **1.1 API filter.** Add `BOT_SENDER_REASON`, the `include_bot` parameter, and the NULL-safe filter. Tests: hidden by default, shown with `include_bot=true`, human ignores and NULL-message events still listed. Gate: `ruff check .`, `pytest`.
-- [ ] **1.2 Purge migration.** Add `0007_purge_bot_events` deleting `status = 'ignored' AND error_message = 'bot sender'`. Test that only bot rows are removed. Gate: `ruff check .`, `pytest`.
+- [x] **1.1 API filter.** `86aa700` Add `BOT_SENDER_REASON`, the `include_bot` parameter, and the NULL-safe filter. Tests: hidden by default, shown with `include_bot=true`, human ignores and NULL-message events still listed. Gate: `ruff check .`, `pytest`.
+- [~] **1.2 Purge migration.** Add `0007_purge_bot_events` deleting `status = 'ignored' AND error_message = 'bot sender'`. Test that only bot rows are removed. Gate: `ruff check .`, `pytest`.
 
 ## Phase 2: Frontend and docs
 
