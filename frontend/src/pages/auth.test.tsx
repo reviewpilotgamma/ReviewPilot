@@ -120,6 +120,18 @@ describe("First sign-in gate", () => {
     expect(screen.getByRole("button", { name: "Already installed? Connect GitHub" })).toBeInTheDocument();
   });
 
+  it("goes straight to the KPIs once a repository is available, even before the first review", async () => {
+    mockFetch({
+      "GET /api/v1/github/app": APP,
+      "GET /api/v1/metrics/summary": { total_reviews: 0, recent: [] },
+      "GET /api/v1/metrics/trend": [],
+    });
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText("PRs reviewed")).toBeInTheDocument();
+    expect(screen.queryByText("Welcome to ReviewPilot")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pick a repository")).not.toBeInTheDocument();
+  });
+
   it("shows a banner on other pages while nothing is installed", async () => {
     mockFetch({ "GET /api/v1/github/app": APP, "GET /api/v1/github/installations": [] });
     renderWithProviders(<AppShell />, { user: UNLINKED, path: "/rules" });

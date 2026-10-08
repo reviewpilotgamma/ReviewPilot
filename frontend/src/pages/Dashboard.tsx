@@ -1,7 +1,7 @@
 import { CheckCircle2, GitPullRequest, Gauge, ThumbsUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ONBOARDING_DONE_KEY, OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { InstallAppGate } from "@/components/onboarding/InstallAppGate";
 import { ReviewsTable } from "@/components/reviews/ReviewsTable";
 import { Card } from "@/components/ui/Card";
 import { SegmentedControl } from "@/components/ui/Controls";
@@ -26,14 +26,6 @@ const PERIODS = [
   { value: "90", label: "90 days" },
 ] as const;
 
-function readDone(): boolean {
-  try {
-    return localStorage.getItem(ONBOARDING_DONE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
 function Sparkline({ points }: { points: TrendPoint[] }) {
   const max = Math.max(1, ...points.map((p) => p.reviews));
   const width = 100;
@@ -56,7 +48,6 @@ export default function Dashboard() {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const [period, setPeriod] = useState<(typeof PERIODS)[number]["value"]>("30");
-  const [onboardingDone, setOnboardingDone] = useState(readDone);
   const days = Number(period);
   const repo = selectedRepo || undefined;
   const summary = useMetricsSummary(repo, days);
@@ -74,8 +65,7 @@ export default function Dashboard() {
   if (installsLoading || appLoading) return <FullPageSpinner />;
   if (installsError) return <ErrorState message="Could not load your GitHub installations." onRetry={() => void refresh()} />;
 
-  const showWizard = installations.length === 0 || (!onboardingDone && summary.data?.total_reviews === 0);
-  if (showWizard) return <OnboardingWizard onComplete={() => setOnboardingDone(true)} />;
+  if (installations.length === 0) return <InstallAppGate />;
 
   const data = summary.data;
   const loading = summary.isLoading;

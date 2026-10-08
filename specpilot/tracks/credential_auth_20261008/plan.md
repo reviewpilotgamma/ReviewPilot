@@ -63,6 +63,11 @@
 - [x] 5.1 `RepoGrant` model, migration `0006_repo_grants`, granted repos in `get_accessible`,
       `scripts/grant_repo.py`, tests — `70bb483`
 
+## Phase 6 — Dashboard without the onboarding wizard (follow-up)
+
+- [x] 6.1 Replace `OnboardingWizard` with `InstallAppGate`. With any repository, the dashboard shows the KPIs
+      straight away, scoped by the navbar repository picker.
+
 ## Implementation Notes
 
 - Connect is a `GET /auth/github/connect?mode=install|authorize` redirect rather than a POST that returns a
