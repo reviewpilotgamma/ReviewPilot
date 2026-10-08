@@ -1,0 +1,9 @@
+{
+  "track_id": "docs_audit_20261008",
+  "title": "Validate and refresh the artifacts documents",
+  "type": "chore",
+  "status": "in progress",
+  "created": "2026-10-08",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}
