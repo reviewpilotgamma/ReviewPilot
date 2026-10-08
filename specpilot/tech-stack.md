@@ -9,7 +9,9 @@ Record any change to this stack here *before* implementing it.
 - SQLAlchemy 2 with Alembic migrations
 - Pydantic v2 and pydantic-settings. Config is loaded from `backend/.env` (`app/core/config.py`).
 - httpx for GitHub and LLM HTTP calls
-- PyJWT (GitHub App JWT) and cryptography (Fernet token encryption)
+- PyJWT (GitHub App JWT and session cookie) and cryptography (Fernet token encryption)
+- Seeded username/password accounts (`dev`, `admin` roles) hashed with stdlib `hashlib.scrypt`. GitHub OAuth
+  is used only to link a user's GitHub identity while installing the GitHub App.
 - In-process, DB-backed job worker that claims jobs atomically, retries with backoff, and resumes jobs after a restart
 
 ## AI / LLM

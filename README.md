@@ -46,6 +46,9 @@ GitHub → Settings → Developer settings → GitHub Apps → **New GitHub App*
   - Metadata: *Read-only*
 - **Subscribe to events**: *Pull request*, *Issue comment*.
 - **Callback URL** (Identifying and authorizing users): `{API_BASE_URL}/api/v1/auth/callback`.
+- Turn on **Request user authorization (OAuth) during installation**. Installing the App from ReviewPilot's
+  navbar then links the signed-in user's GitHub account in one step. Without it, ReviewPilot runs a separate
+  authorize step after the install.
 - Generate a **private key** and save it as `backend/secrets/reviewpilot.private-key.pem`.
 - Copy the App ID, slug, Client ID and Client secret into `backend/.env`.
 
@@ -79,7 +82,22 @@ python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().de
 ```
 
 In development, these fall back to ephemeral values, so sessions reset when the server restarts.
-`ADMIN_GITHUB_LOGINS` (comma-separated) controls who can edit Settings.
+
+### Signing in
+
+Users sign in at `/login` with one of two accounts that are seeded on startup from `backend/.env`:
+
+| Role | Settings | Development default |
+| --- | --- | --- |
+| `dev` | `SEED_DEV_USERNAME` / `SEED_DEV_PASSWORD` | `dev` / `dev12345` |
+| `admin` | `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` | `admin` / `admin12345` |
+
+Only `admin` can edit Settings and the golden prompt. In production, set both passwords. An account without
+a password is not created, and changing a password in `.env` takes effect on the next restart.
+
+After the first sign-in the dashboard asks the user to **Install GitHub App** (also in the navbar). The install
+links that user's GitHub account, and from then on they see the repositories their GitHub account can reach
+through the App. If the App is already installed, use **Already installed? Connect GitHub**.
 
 > Settings saved from the UI are written to `backend/.env`. Real environment variables take precedence over
 > `.env`, so don't also set those keys in the process environment if you want to manage them from the UI.

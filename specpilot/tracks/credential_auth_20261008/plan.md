@@ -34,22 +34,34 @@
 
 ## Phase 1 — Backend
 
-- [~] 1.1 Model, migration 0005, password hashing, settings, account seeding and throttle, `POST /auth/login`,
+- [x] 1.1 Model, migration 0005, password hashing, settings, account seeding and throttle, `POST /auth/login`,
       `GET /auth/github/connect`, linking callback, `get_accessible` changes, removal of dev-login and local mode
-- [ ] 1.2 Tests: login, throttle, seeding, connect/callback linking, the migration keeps FK references,
+- [x] 1.2 Tests: login, throttle, seeding, connect/callback linking, the migration keeps FK references,
       `/me` fields, unlinked user sees no repos; update the conftest admin fixture
-- [ ] 1.3 Quality gate: `ruff check .`, `pytest`
+- [x] 1.3 Quality gate: `ruff check .`, `pytest` — `ee7d3f9`
 
 ## Phase 2 — Frontend
 
-- [ ] 2.1 Types, endpoints, client; `Login` page and route; `AuthContext.login` → `/login`; `ProtectedRoute` text
-- [ ] 2.2 Landing cleanup; Navbar install button; `GithubConnect` components; wizard install step; dashboard
+- [x] 2.1 Types, endpoints, client; `Login` page and route; `AuthContext.login` → `/login`; `ProtectedRoute` text
+- [x] 2.2 Landing cleanup; Navbar install button; `GithubConnect` components; wizard install step; dashboard
       gate; app-shell banner; `github_error` toast
-- [ ] 2.3 Tests and quality gate: `npm run lint`, `npm run typecheck`, `npm test`
+- [x] 2.3 Tests and quality gate: `npm run lint`, `npm run typecheck`, `npm test` — `8454db0`
 
 ## Phase 3 — Docs
 
-- [ ] 3.1 `backend/.env.example`, `README.md` (seed accounts, GitHub App callback and "request user
+- [x] 3.1 `backend/.env.example`, `README.md` (seed accounts, GitHub App callback and "request user
       authorization during installation"), `tech-stack.md` auth line
 
 ## Implementation Notes
+
+- Connect is a `GET /auth/github/connect?mode=install|authorize` redirect rather than a POST that returns a
+  URL. The state lives in an HttpOnly cookie and the callback also requires the session, so a cross-site
+  GET cannot link a foreign account.
+- `get_accessible` returns `{}` for unlinked users and for `ReauthRequired`, so a revoked token gates the user
+  instead of logging them out. `test_access.test_api_maps_reauth_to_401` was renamed to match.
+- Migration 0005 turns SQLite foreign keys off around the `users` rebuild. `test_migration_credential_auth`
+  checks that `repo_rules.updated_by_user_id` survives the upgrade. The downgrade gives duplicate or missing
+  `github_id` values a placeholder `-id` so the restored UNIQUE holds.
+- The seeder converts the old local-mode row (`github_id = 0`, username `dev`) into the seeded dev account.
+- The 401 from a failed sign-in still fires the client's unauthorized listeners. That is harmless, because
+  `me` is already null, and the login page maps 401 and 429 to its own messages.
