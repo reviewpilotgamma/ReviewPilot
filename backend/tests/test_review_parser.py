@@ -11,7 +11,16 @@ def test_meta_parsed_and_stripped():
     assert parsed.meta_found
     assert parsed.verdict == "critical" and parsed.score == 3.5
     assert "reviewpilot-meta" not in parsed.body
-    assert parsed.summary.startswith("This PR adds naive retries")
+    assert parsed.summary.startswith("- **What it does:** Adds naive retries")
+
+
+def test_structured_findings_counted():
+    parsed = parse_review(SAMPLE.replace('<!-- reviewpilot-meta: {"score": 3.5, "verdict": "critical"} -->', ""))
+    assert not parsed.meta_found
+    assert parsed.verdict == "critical"
+    excerpt = findings_excerpt(SAMPLE)
+    assert excerpt.startswith("- **Critical** · **Non-idempotent retries**")
+    assert "**File(s):** `app/payments.py`" in excerpt
 
 
 def test_score_clamped_and_rounded():

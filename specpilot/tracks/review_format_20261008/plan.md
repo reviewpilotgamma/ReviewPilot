@@ -20,6 +20,6 @@
 
 ## Phase 1: Review format
 
-- [~] **1.1 Prompt format.** Rewrite the review and merge OUTPUT FORMAT blocks and verbosity directives. Gate: `ruff check .`, `pytest`.
-- [ ] **1.2 Fixture and tests.** Update `gemini_review.md`; add prompt-rule and parser tests. Gate: `ruff check .`, `pytest`.
+- [x] **1.1 Prompt format.** `c7b07ad` Rewrite the review and merge OUTPUT FORMAT blocks and verbosity directives. Gate: `ruff check .`, `pytest`.
+- [~] **1.2 Fixture and tests.** Update `gemini_review.md`; add prompt-rule and parser tests. Gate: `ruff check .`, `pytest`.
 - [ ] **1.3 Landing sample.** Update `SAMPLE_COMMENT`. Gate: `npm run lint`, `npm run typecheck`, `npm test`.

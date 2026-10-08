@@ -50,3 +50,11 @@ def test_presets_well_formed():
     ids = {p["id"] for p in prompts.RULE_PRESETS}
     assert ids == {"microservices", "security", "performance"}
     assert all(p["instructions"] for p in prompts.RULE_PRESETS)
+
+
+@pytest.mark.parametrize("prompt", [build_review_system_prompt(RuleSettings(), None), prompts.MERGE_SYSTEM_PROMPT])
+def test_output_format_rules(prompt):
+    assert prompts.OUTPUT_FORMAT in prompt
+    for rule in ("**File(s):**", "**Problem:**", "**Impact:**", "**What it does:**", "Do not use emoji."):
+        assert rule in prompt
+    assert "Do not cite line numbers." in prompt
