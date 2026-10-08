@@ -30,7 +30,7 @@ class ReviewListItem(ORMModel):
     pr_title: str
     author: str
     verdict: Verdict
-    score: float
+    quality_score: float
     lines_reviewed: int
     summary: str
     created_at: datetime
