@@ -22,6 +22,11 @@ export function formatPercent(value: number | null | undefined): string {
   return value === null || value === undefined ? "—" : `${value.toFixed(1).replace(/\.0$/, "")}%`;
 }
 
+/** Token count with thousands separators, like the Lines column; "—" when the review has none recorded. */
+export function formatTokens(tokens: number | null | undefined): string {
+  return tokens === null || tokens === undefined ? "—" : tokens.toLocaleString();
+}
+
 /** Score colour band: ≥8 emerald, 5–7.9 amber, <5 rose. */
 export function scoreTone(score: number | null | undefined): "emerald" | "amber" | "rose" | "muted" {
   if (score === null || score === undefined) return "muted";

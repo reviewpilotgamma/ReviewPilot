@@ -28,7 +28,7 @@ TS type), `ReviewsTable`, `History`.
 | Page | `frontend/src/pages/History.tsx` | Pass `showTokens` |
 | FE tests | `frontend/src/lib/lib.test.ts`, `frontend/src/pages/pages.test.tsx` | Format + column rendering |
 
-## Phase 1: Capture and store token usage
+## Phase 1: Capture and store token usage [checkpoint: ca36c98]
 
 - [x] **1.1 Gemini usage.** `4ca6ab9` Add `tokens_used: int | None = None` to `GeminiResult`; add `_usage_tokens(usage)`
   (`totalTokenCount`, else the sum of prompt/candidates/thoughts counts, else `None`); set it in `generate()`.
@@ -45,7 +45,7 @@ TS type), `ReviewsTable`, `History`.
 
 ## Phase 2: Tokens column on Review History
 
-- [ ] **2.1 Type and formatter.** `tokens_used?: number | null` on `ReviewListItem`; `formatTokens()` in
+- [~] **2.1 Type and formatter.** `tokens_used?: number | null` on `ReviewListItem`; `formatTokens()` in
   `lib/format.ts`. Vitest cases. Gate: `npm run lint`, `npm run typecheck`, `npm test`.
 - [ ] **2.2 Table column.** `showTokens` prop on `ReviewsTable` (header "Tokens" after "Lines"); `History` passes
   it. Vitest: History shows the value and "—"; Dashboard has no Tokens column. Gate: same as 2.1.
