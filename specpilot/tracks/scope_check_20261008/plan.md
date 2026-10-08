@@ -28,8 +28,8 @@
 
 ## Phase 2: Frontend
 
-- [~] **2.1 Landing sample.** Gate: `npm run lint`, `npm run typecheck`, `npm test`.
+- [x] **2.1 Landing sample.** `4c0aa19` Gate: `npm run lint`, `npm run typecheck`, `npm test`.
 
 ## Phase 3: Live verification
 
-- [ ] **3.1 Demo PRs.** From `demo/base`: `demo/scope-match` (description matches) and `demo/scope-extra-change` (undescribed extra change). Open both against `demo/base` and check the posted comments.
+- [x] **3.1 Demo PRs.** PR #11 (`demo/scope-match`): Matches description: Yes, no unexpected changes, Passed 10.0. PR #12 (`demo/scope-extra-change`): Matches description: Partly, flagged the `LOG_LEVEL` and `JOB_MAX_ATTEMPTS` changes in `backend/app/core/config.py`, verdict unaffected (Passed 9.5). From `demo/base`: `demo/scope-match` (description matches) and `demo/scope-extra-change` (undescribed extra change). Open both against `demo/base` and check the posted comments.
