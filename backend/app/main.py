@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -25,6 +26,8 @@ from app.services.worker import worker
 
 logger = logging.getLogger(__name__)
 API_PREFIX = "/api/v1"
+# Process start, for the uptime reported by /health.
+STARTED_AT = time.monotonic()
 
 
 def _seed_accounts() -> None:
@@ -119,6 +122,7 @@ def create_app() -> FastAPI:
             "status": "ok" if db_ok else "degraded",
             "db": db_ok,
             "worker": "running" if worker.running else "stopped",
+            "uptime_seconds": int(time.monotonic() - STARTED_AT),
         }
 
     return app
