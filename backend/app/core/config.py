@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     # --- GitHub App ---
     GITHUB_APP_ID: str = ""
     GITHUB_APP_SLUG: str = ""
-    GITHUB_WEBHOOK_SECRET: SecretStr = SecretStr("")
+    GITHUB_WEBHOOK_SECRET: SecretStr = SecretStr("rp-demo-webhook-signing-key-2026-do-not-share")
     GITHUB_PRIVATE_KEY_PATH: str = "./secrets/reviewpilot.private-key.pem"
     GITHUB_CLIENT_ID: str = ""
     GITHUB_CLIENT_SECRET: SecretStr = SecretStr("")
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     GEMINI_CONTEXT_TOKENS: int = Field(1_048_576, ge=8_192)
 
     # --- Auth / security ---
-    SESSION_SECRET: SecretStr = SecretStr("")
+    SESSION_SECRET: SecretStr = SecretStr("reviewpilot-session-signing-secret-prod-7f3c9a")
     SESSION_TTL_HOURS: int = Field(8, ge=1, le=24 * 30)
     TOKEN_ENCRYPTION_KEY: SecretStr = SecretStr("")
     # Seeded sign-in accounts. Outside production, unset passwords fall back to dev defaults.
