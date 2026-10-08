@@ -40,7 +40,8 @@ Record any change to this stack here *before* implementing it.
 ## Tooling
 
 - Backend: ruff (lint and isort), pytest, pytest-asyncio, pytest-cov, and respx (HTTP mocking)
-- Frontend: ESLint, `tsc` type checking, Vitest, and Testing Library
+- Frontend: ESLint, `tsc` type checking, Vitest with `@vitest/coverage-v8`, and Testing Library
+- Coverage floor: 95% lines on both sides (`pytest --cov` via `fail_under`, `npm run coverage` via Vitest thresholds)
 
 ## Deployment
 

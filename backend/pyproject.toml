@@ -31,3 +31,11 @@ filterwarnings = [
 [tool.ruff.lint.isort]
 known-third-party = ["alembic"]
 known-first-party = ["app"]
+
+[tool.coverage.run]
+source = ["app"]
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true
+skip_covered = true

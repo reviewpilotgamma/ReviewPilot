@@ -9,7 +9,8 @@ backend/   FastAPI · SQLAlchemy 2 (SQLite, WAL) · Alembic · Pydantic v2 · ht
 frontend/  React 18 · Vite · TypeScript · TanStack Query · Tailwind CSS
 ```
 
-See [`implementation.md`](implementation.md) for the full design. The source brief is [`Application-Prompt.md`](Application-Prompt.md).
+Design documents live in [`artifacts/`](artifacts/README.md): [`ARCHITECTURE.md`](artifacts/ARCHITECTURE.md) (the system today),
+[`REQUIREMENTS.md`](artifacts/REQUIREMENTS.md) and [`API.md`](artifacts/API.md).
 
 ## How it works
 
