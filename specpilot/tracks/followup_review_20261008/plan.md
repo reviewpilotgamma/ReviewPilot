@@ -11,14 +11,14 @@
 ## Tasks
 
 ### Phase 1: Data and GitHub
-- [~] **1.1 Migration and model.**
+- [x] **1.1 Migration and model.** `83ef680`
   - `backend/alembic/versions/0008_review_followups.py` adds `pr_reviews.head_sha` (String 40, nullable) and
     `previous_review_id` (Integer, nullable, FK to `pr_reviews.id` with `ON DELETE SET NULL`), using
     `batch_alter_table` as `0005` does for SQLite.
   - Update `backend/app/models/pr_review.py`, and add `head_sha` and `previous_review_id` to `ReviewListItem` in
     `backend/app/schemas/reviews.py`.
   - Test: upgrade and downgrade, following `tests/test_migration_credential_auth.py`.
-- [ ] **1.2 GitHub client** in `backend/app/services/github_app.py`:
+- [~] **1.2 GitHub client** in `backend/app/services/github_app.py`:
   - Add `head_sha` to `PullRequest` (from `head.sha`).
   - Add `get_compare_files(installation_id, owner, repo, base_sha, head_sha) -> list[tuple[str, int, int]] | None`,
     which calls `GET /repos/{o}/{r}/compare/{base}...{head}` through `_installation_request` and returns `None`
