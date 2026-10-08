@@ -117,13 +117,19 @@ python -m scripts.grant_repo dev reviewpilotgamma/reviewpilot   # add --revoke t
 
 ```bash
 cd backend
-pytest -q --cov=app                  # ~250 tests incl. E2E, ~94 % coverage
+pytest -q                            # ~450 tests incl. E2E
+pytest -q --cov                      # same, plus coverage; fails below 95 % (currently ~98 %)
 ruff check . && ruff format --check .
 
 cd frontend
 npm test                             # Vitest + Testing Library
+npm run coverage                     # same, plus coverage; fails below 95 % lines/statements (currently ~98 %)
 npm run typecheck && npm run lint && npm run build
 ```
+
+Both sides enforce a 95 % line-coverage floor: `fail_under` in `backend/pyproject.toml` and the Vitest
+`coverage.thresholds` in `frontend/vite.config.ts`. The HTML reports land in `backend/htmlcov/` (with
+`--cov-report=html`) and `frontend/coverage/`.
 
 ### End-to-end pipeline suite
 
