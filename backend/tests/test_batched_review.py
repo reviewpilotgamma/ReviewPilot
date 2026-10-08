@@ -51,8 +51,11 @@ def review_md(verdict: str = "warning", score: float = 6.5, title: str = "Batch 
     )
 
 
-def ok(text: str) -> httpx.Response:
-    return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": text}]}, "finishReason": "STOP"}]})
+def ok(text: str, tokens: int | None = None) -> httpx.Response:
+    payload: dict = {"candidates": [{"content": {"parts": [{"text": text}]}, "finishReason": "STOP"}]}
+    if tokens is not None:
+        payload["usageMetadata"] = {"totalTokenCount": tokens}
+    return httpx.Response(200, json=payload)
 
 
 def is_merge(request: httpx.Request) -> bool:
@@ -102,7 +105,9 @@ async def test_large_diff_is_batched_then_merged(mock_http, db, small_batches):
     diff = three_files()
     comment = serve(mock_http, diff)
     gemini = mock_http.post(GEMINI_URL).mock(
-        side_effect=lambda r: ok(review_md("warning", 6.0, "Merged")) if is_merge(r) else ok(review_md())
+        side_effect=lambda r: (
+            ok(review_md("warning", 6.0, "Merged"), 500) if is_merge(r) else ok(review_md(), 1000)
+        )
     )
 
     await reviewer.handle_review(make_job(db, comment_id=None))
@@ -122,6 +127,7 @@ async def test_large_diff_is_batched_then_merged(mock_http, db, small_batches):
     review = stored(db)
     assert review.verdict == "warning" and review.score == 6.0
     assert review.lines_reviewed == reviewer.count_changed_lines(diff)
+    assert review.tokens_used == 3 * 1000 + 500  # three batches plus the merge
     assert not review.diff_truncated
 
 
@@ -151,7 +157,7 @@ async def test_transient_batch_failure_gives_partial_review(mock_http, db, small
     comment = serve(mock_http, three_files())
     gemini = mock_http.post(GEMINI_URL).mock(
         side_effect=lambda r: (
-            ok(review_md())
+            ok(review_md(), 100)
             if is_merge(r) or batch_number(r) != 2
             else httpx.Response(503, json={"error": {"message": "busy"}})
         )
@@ -165,6 +171,7 @@ async def test_transient_batch_failure_gives_partial_review(mock_http, db, small
     review = stored(db)
     assert review.diff_truncated
     assert review.lines_reviewed == reviewer.count_changed_lines(file_diff("a.py") + file_diff("c.py"))
+    assert review.tokens_used == 3 * 100  # two batches plus the merge; the failed batch is not counted
 
 
 async def test_permanent_batch_failure_is_not_retried(mock_http, db, small_batches):
@@ -220,7 +227,7 @@ async def test_merge_failure_joins_batch_reviews_in_code(mock_http, db, small_ba
         side_effect=lambda r: (
             httpx.Response(500, json={"error": {"message": "down"}})
             if is_merge(r)
-            else ok(review_md(title=f"Batch {batch_number(r)}"))
+            else ok(review_md(title=f"Batch {batch_number(r)}"), 200)
         )
     )
 
@@ -229,7 +236,9 @@ async def test_merge_failure_joins_batch_reviews_in_code(mock_http, db, small_ba
     body = posted(comment)
     assert "reviewed in 3 parts" in body
     assert "_Part 1 of 3_" in body and "Batch 3 —" in body
-    assert stored(db).verdict == "warning"
+    review = stored(db)
+    assert review.verdict == "warning"
+    assert review.tokens_used == 3 * 200  # the failed merge adds nothing
 
 
 async def test_merged_verdict_never_better_than_worst_batch(mock_http, db, small_batches):
@@ -244,6 +253,13 @@ async def test_merged_verdict_never_better_than_worst_batch(mock_http, db, small
     await reviewer.handle_review(make_job(db, comment_id=None))
     review = stored(db)
     assert review.verdict == "critical" and review.score <= 4.9
+
+
+def test_sum_tokens_ignores_unreported_calls():
+    assert reviewer.sum_tokens(100, None, 50) == 150
+    assert reviewer.sum_tokens(0) == 0
+    assert reviewer.sum_tokens(None, None) is None
+    assert reviewer.sum_tokens() is None
 
 
 def test_enforce_verdict_floor_and_fallback_merge():

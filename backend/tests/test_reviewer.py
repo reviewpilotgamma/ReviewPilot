@@ -85,7 +85,9 @@ def test_count_changed_lines_ignores_headers():
 
 
 async def test_happy_path_persists_and_posts(github, db):
-    gemini_route = github.post(GEMINI_URL).respond(200, json=gemini_response())
+    gemini_route = github.post(GEMINI_URL).respond(
+        200, json={**gemini_response(), "usageMetadata": {"totalTokenCount": 4321}}
+    )
     comment_route = github.post(COMMENTS_URL).respond(201, json={"id": 777})
     upsert_rule(
         db,
@@ -119,6 +121,7 @@ async def test_happy_path_persists_and_posts(github, db):
     db.expire_all()
     review = db.scalars(select(PRReview)).one()
     assert (review.verdict, review.score, review.lines_reviewed) == ("critical", 3.5, 7)
+    assert review.tokens_used == 4321
     assert review.github_comment_id == 777 and review.full_markdown == body
     assert review.repo_full_name == "acme/api" and review.author == "bob"
     assert db.get(Job, ctx.job_id).review_id == review.id
