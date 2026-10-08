@@ -26,7 +26,7 @@
   - respx tests in `tests/test_github_app.py`.
 
 ### Phase 2: Triggers
-- [~] **2.1 Dispatcher** in `backend/app/services/dispatcher.py` `plan_jobs`:
+- [x] **2.1 Dispatcher** `b794b9c` in `backend/app/services/dispatcher.py` `plan_jobs`:
   - Add a `pull_request` + `synchronize` branch. When `load_rule_settings(...).review_mode == "auto"`, queue
     `JobSpec("review", {...base, "trigger": "push", "requester": None})`.
   - Skip with `ignore_reason="review already queued"` when a queued review `Job` for the same owner, repo and PR
@@ -35,7 +35,7 @@
   - Tests in `tests/test_dispatcher.py`, with a new fixture `tests/fixtures/pull_request_synchronize.json`.
 
 ### Phase 3: Follow-up review
-- [ ] **3.1 Prompt** in `backend/app/services/prompts.py`:
+- [~] **3.1 Prompt** in `backend/app/services/prompts.py`:
   - `FOLLOWUP_DIRECTIVE`: the Follow-up Status section and its rules (no severity tags; Architectural Findings
     lists current issues only).
   - `build_previous_review_block(prev_markdown, sha, verdict, score, changed_files)`: takes the previous review's

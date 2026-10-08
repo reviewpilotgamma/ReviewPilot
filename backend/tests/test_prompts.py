@@ -79,3 +79,48 @@ def test_pr_context_lists_changed_files_only_when_given():
 def test_empty_description_is_marked():
     pr = PullRequest(7, "Title", "  ", "bob", "main", "feat", "open", False, 1, 1, 1)
     assert "Description:\n(no description)" in build_pr_context(pr, "acme", "api", "d")
+
+
+PREVIOUS_MD = (
+    "## ReviewPilot Architectural Audit\n\n**Verdict:** x\n\n### Executive Summary\n- old summary\n\n"
+    "### Architectural Findings\n- **Critical** · **Hardcoded secret**\n  - **File(s):** `app/config.py`\n\n"
+    "### Specific Recommendations\n1. **Move the secret** in `app/config.py`\n\n### What Looks Solid\n- tests\n"
+)
+
+
+def test_previous_review_block_keeps_findings_and_changed_files():
+    block = prompts.build_previous_review_block(
+        PREVIOUS_MD, head_sha="abcdef123456", verdict="critical", score=3.5, changed_files=[("app/config.py", 2, 1)]
+    )
+    assert block.startswith("Previous ReviewPilot review of commit abcdef1 (verdict critical, score 3.5/10)")
+    assert "UNTRUSTED" in block
+    assert "**Hardcoded secret**" in block and "**Move the secret**" in block
+    assert "old summary" not in block and "What Looks Solid" not in block
+    assert block.endswith("Files changed since the previous review:\n- app/config.py (+2/-1)")
+
+
+def test_previous_review_block_unknown_history_and_truncation():
+    long_md = "### Architectural Findings\n" + "x" * (prompts.MAX_PREVIOUS_REVIEW_CHARS + 100)
+    block = prompts.build_previous_review_block(long_md, head_sha=None, verdict="warning", score=6.0, changed_files=None)
+    assert "review of an earlier commit" in block
+    assert "[... previous review truncated ...]" in block
+    assert block.endswith("Files changed since the previous review: unknown.")
+
+
+def test_pr_context_puts_previous_review_before_diff():
+    pr = PullRequest(7, "Title", "Fix", "bob", "main", "feat", "open", False, 1, 1, 1)
+    context = build_pr_context(pr, "acme", "api", "d", manifest=[("a.py", 1, 0)], previous="PREVIOUS BLOCK")
+    assert context.index("PREVIOUS BLOCK") < context.index("Changed files:") < context.index("Diff:")
+
+
+def test_merge_content_carries_previous_review():
+    pr = PullRequest(7, "Title", "Fix", "bob", "main", "feat", "open", False, 1, 1, 1)
+    content = prompts.build_merge_content(pr, "acme", "api", [(1, ["a.py"], "warning", 6.0, "body")], 1, previous="PREV")
+    assert content.index("PREV") < content.index("Reviewed in 1 parts")
+    assert "PREV" not in prompts.build_merge_content(pr, "acme", "api", [(1, ["a.py"], "warning", 6.0, "body")], 1)
+
+
+def test_followup_directive_rules():
+    directive = prompts.FOLLOWUP_DIRECTIVE
+    for rule in ("### Follow-up Status", "**Fixed:**", "**Still open:**", "**New:**", "Never list fixed findings"):
+        assert rule in directive
