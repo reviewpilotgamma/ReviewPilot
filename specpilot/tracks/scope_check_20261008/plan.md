@@ -24,11 +24,11 @@
 
 - [x] **1.1 Prompt.** `eee10db` Scope Check section and rules in `OUTPUT_FORMAT`; batch note; description and rules for the merge. Gate: `ruff check .`, `pytest`.
 - [x] **1.2 Context and fallback.** `1886e45` `manifest` on `build_pr_context`, passed from `handle_review`; "Scope Check" in `MERGED_SECTIONS`. Gate: `ruff check .`, `pytest`.
-- [~] **1.3 Tests.** Prompt, context, merge, fallback and parser tests. Gate: `ruff check .`, `pytest`.
+- [x] **1.3 Tests.** `452f623` Prompt, context, merge, fallback and parser tests. Gate: `ruff check .`, `pytest`.
 
 ## Phase 2: Frontend
 
-- [ ] **2.1 Landing sample.** Gate: `npm run lint`, `npm run typecheck`, `npm test`.
+- [~] **2.1 Landing sample.** Gate: `npm run lint`, `npm run typecheck`, `npm test`.
 
 ## Phase 3: Live verification
 

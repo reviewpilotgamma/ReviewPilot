@@ -41,6 +41,13 @@ const SAMPLE_COMMENT = `## ReviewPilot Architectural Audit
 - **What it does:** Adds retry logic to the payments client.
 - **Overall risk:** Moderate. Retries are bounded, but the charge call is not idempotent.
 
+### Scope Check
+- **Matches description:** Partly
+- **Unexpected changes:**
+  - \`config/settings.py\`: raises the default pool size, which the description does not mention.
+- **Described but not found:**
+  - None.
+
 ### Architectural Findings
 - **Warning** · **Non-idempotent retries**
   - **File(s):** \`payments/client.py\`
