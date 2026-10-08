@@ -322,13 +322,17 @@ describe("useSubmitFeedback", () => {
 
   it("moves the user's vote optimistically", async () => {
     let release: () => void = () => undefined;
-    mockFetch({
-      "POST /api/v1/reviews/5/feedback": () =>
-        new Promise((resolve) => {
-          release = () => resolve({ id: 3, review_id: 5, rating: "helpful" });
-        }),
-      "GET /api/v1/reviews/5": REVIEW,
-    });
+    const base = mockFetch({ "GET /api/v1/reviews/5": REVIEW });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
+        init?.method === "POST"
+          ? new Promise<Response>((resolve) => {
+              release = () => resolve(json({ id: 3, review_id: 5, rating: "helpful" }, 200));
+            })
+          : base(input, init),
+      ),
+    );
     const client = newClient();
     client.setQueryData(["review", 5], REVIEW);
     const { result } = renderHook(() => useSubmitFeedback(5), { wrapper: wrapper(client) });
@@ -349,7 +353,6 @@ describe("useSubmitFeedback", () => {
   it("creates a first vote optimistically and rolls back when the request fails", async () => {
     mockFetch({
       "POST /api/v1/reviews/5/feedback": () => json({ detail: "nope" }, 500),
-      "GET /api/v1/reviews/5": () => new Promise(() => undefined),
     });
     const client = newClient();
     const first = { ...REVIEW, my_feedback: null, feedback_counts: { helpful: 0, unhelpful: 0 } };
