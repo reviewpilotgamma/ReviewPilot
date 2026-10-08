@@ -17,8 +17,13 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    # Skip columns that exist: an interrupted earlier run of this revision may have added them without stamping it.
+    existing = {c["name"] for c in sa.inspect(op.get_bind()).get_columns("pr_reviews")}
     # Plain ADD COLUMN: no table rebuild, so review_feedback rows (ON DELETE CASCADE) are never touched.
-    op.add_column("pr_reviews", sa.Column("head_sha", sa.String(40)))
+    if "head_sha" not in existing:
+        op.add_column("pr_reviews", sa.Column("head_sha", sa.String(40)))
+    if "previous_review_id" in existing:
+        return
     if op.get_bind().dialect.name == "sqlite":
         # SQLite accepts a REFERENCES clause on ADD COLUMN, but Alembic only adds constraints by rebuilding.
         op.execute(

@@ -65,10 +65,10 @@
   plus the "Previous review" link.
 - [x] **4.3** `ae0282e` `frontend/src/pages/History.tsx` shows a "Follow-up" badge.
 - [x] **4.4** `ae0282e` Vitest cases in `frontend/src/pages/pages.test.tsx`.
-- [~] **4.5** Update the README's PR trigger table: push in auto mode, and `@review` after a push.
+- [x] **4.5** `38e84d4` Update the README's PR trigger table: push in auto mode, and `@review` after a push.
 
 ### Phase 5: Live verification
-- [ ] **5.1** In the `ReviewPilot-demo` worktree, branch `demo/followup` from `demo/base`.
+- [~] **5.1** In the `ReviewPilot-demo` worktree, branch `demo/followup` from `demo/base`.
   - First commit: add an endpoint with two clear issues, an `httpx` call without a timeout and a hardcoded
     secret.
   - Open a PR against `demo/base` with a neutral description. Wait for the first review.

@@ -37,3 +37,16 @@ def test_followup_columns_round_trip(tmp_path):
     with sqlite3.connect(path) as conn:
         assert conn.execute("SELECT COUNT(*) FROM pr_reviews").fetchone() == (2,)
         assert conn.execute("SELECT COUNT(*) FROM review_feedback").fetchone() == (1,)
+
+
+def test_upgrade_tolerates_columns_from_an_interrupted_run(tmp_path):
+    path = tmp_path / "m.db"
+    cfg = _config(f"sqlite:///{path.as_posix()}")
+    command.upgrade(cfg, "0007_purge_bot_events")
+    with sqlite3.connect(path) as conn:
+        conn.execute("ALTER TABLE pr_reviews ADD COLUMN head_sha VARCHAR(40)")
+        conn.execute("ALTER TABLE pr_reviews ADD COLUMN previous_review_id INTEGER")
+
+    command.upgrade(cfg, "head")
+    with sqlite3.connect(path) as conn:
+        assert conn.execute("SELECT version_num FROM alembic_version").fetchone() == ("0008_review_followups",)
