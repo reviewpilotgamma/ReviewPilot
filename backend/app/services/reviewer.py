@@ -51,7 +51,7 @@ from app.services.rules import load_rule_settings
 
 logger = logging.getLogger(__name__)
 
-BANNER = "## ✈️ ReviewPilot Architectural Audit"
+BANNER = "## ReviewPilot Architectural Audit"
 FOOTER = "_Triggered via ReviewPilot · Architecture Gatekeeper_"
 PLAN_BANNER = "## 🧭 ReviewPilot Execution Plan"
 PLAN_FOOTER = "_Triggered via ReviewPilot · @bot plan_"

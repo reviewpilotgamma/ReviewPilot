@@ -33,7 +33,7 @@ const COMPARISON: [string, Support, Support][] = [
   ["Lives in the PR conversation", "Partial", true],
 ];
 
-const SAMPLE_COMMENT = `## ✈️ ReviewPilot Architectural Audit
+const SAMPLE_COMMENT = `## ReviewPilot Architectural Audit
 
 **Verdict:** 🟡 Warning   ·   **Health score:** 6.8/10   ·   **Lines reviewed:** 214
 

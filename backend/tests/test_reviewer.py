@@ -109,7 +109,7 @@ async def test_happy_path_persists_and_posts(github, db):
     assert "key=" not in str(gemini_route.calls[0].request.url)
 
     body = json.loads(comment_route.calls[0].request.content)["body"]
-    assert body.startswith("## ✈️ ReviewPilot Architectural Audit")
+    assert body.startswith("## ReviewPilot Architectural Audit")
     assert body.rstrip().endswith("_Triggered via ReviewPilot · Architecture Gatekeeper_")
     assert "🔴 Critical Risk" in body and "3.5/10" in body
     assert "_Requested by @alice: “focus on auth boundaries”_" in body

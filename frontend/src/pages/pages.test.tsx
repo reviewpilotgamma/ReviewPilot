@@ -42,7 +42,7 @@ const REVIEW: ReviewDetail = {
   trigger: "comment",
   pr_url: "https://github.com/acme/api/pull/7",
   feedback_counts: { helpful: 0, unhelpful: 0 },
-  full_markdown: "## ✈️ ReviewPilot Architectural Audit\n\n### Executive Summary\nRetries need idempotency.",
+  full_markdown: "## ReviewPilot Architectural Audit\n\n### Executive Summary\nRetries need idempotency.",
   requester: "alice",
   diff_truncated: false,
   model: "gemini-2.0-flash",
