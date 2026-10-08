@@ -31,9 +31,9 @@
 
 ## Phase 1: Documents
 
-- [~] **1.1 Remove duplicates and rewrite the architecture.** Move Problem / Why / Key strengths from the
+- [x] **1.1 Remove duplicates and rewrite the architecture.** `6263562` Move Problem / Why / Key strengths from the
   Architecture docx into `ARCHITECTURE.md`, rewrite the rest from the code, delete both `.docx` files.
-- [ ] **1.2 API reference.** Write `artifacts/API.md` from the routers and `deps.py`.
+- [~] **1.2 API reference.** Write `artifacts/API.md` from the routers and `deps.py`.
 - [ ] **1.3 Requirements.** Update status, add new rows, fix the auth and seed statements.
 - [ ] **1.4 Historical docs.** `implementation.md` banner, changes table and in-place fixes; `Application-Prompt.md`
   note; `TODO.md` status.
