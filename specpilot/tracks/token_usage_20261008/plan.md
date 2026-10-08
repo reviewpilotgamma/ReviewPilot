@@ -47,10 +47,18 @@ TS type), `ReviewsTable`, `History`.
 
 - [x] **2.1 Type and formatter.** `895ab1a` `tokens_used?: number | null` on `ReviewListItem`; `formatTokens()` in
   `lib/format.ts`. Vitest cases. Gate: `npm run lint`, `npm run typecheck`, `npm test`.
-- [~] **2.2 Table column.** `showTokens` prop on `ReviewsTable` (header "Tokens" after "Lines"); `History` passes
+- [x] **2.2 Table column.** `8728566` `showTokens` prop on `ReviewsTable` (header "Tokens" after "Lines"); `History` passes
   it. Vitest: History shows the value and "—"; Dashboard has no Tokens column. Gate: same as 2.1.
-- [ ] **2.3 Docs.** Update the README if it documents the History columns.
+- [x] **2.3 Docs.** No change needed: the README and product docs do not describe the History columns or list migrations.
 
 ## Phase 3: Verification
 
 - [ ] Run a real `@review` on a sandbox PR and confirm History shows a non-zero token count.
+
+## Implementation notes
+
+- `settings.test.tsx` ("shows the loaded settings…") fails on machines whose locale is `en-IN` (`120000` formats as
+  `1,20,000`). It fails on `dev` too and is unrelated to this track; the new token tests compare against
+  `toLocaleString()` so they pass in any locale.
+- Migration test `test_migration_review_followups.py` now upgrades to `0008_review_followups` explicitly instead of
+  `head`, since `head` moved to `0009_review_tokens`.
