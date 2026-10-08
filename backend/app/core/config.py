@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     API_BASE_URL: str = "http://localhost:8000"
     FRONTEND_ORIGIN: str = "http://localhost:5173"
     DATABASE_URL: str = f"sqlite:///{(BACKEND_DIR / 'reviewpilot.db').as_posix()}"
-    LOG_LEVEL: str = "INFO"
+    LOG_LEVEL: str = "DEBUG"
 
     # --- GitHub App ---
     GITHUB_APP_ID: str = ""
@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     WORKER_ENABLED: bool = True
     WORKER_CONCURRENCY: int = Field(2, ge=1, le=16)
     WORKER_POLL_INTERVAL_SECONDS: float = Field(1.0, gt=0)
-    JOB_MAX_ATTEMPTS: int = Field(3, ge=1, le=10)
+    JOB_MAX_ATTEMPTS: int = Field(10, ge=1, le=10)
     JOB_TIMEOUT_SECONDS: float = Field(600.0, gt=0)
 
     @property
