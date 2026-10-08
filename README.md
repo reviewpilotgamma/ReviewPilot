@@ -115,7 +115,7 @@ python -m scripts.grant_repo dev reviewpilotgamma/reviewpilot   # add --revoke t
 
 ```bash
 cd backend
-pytest -q --cov=app                  # ~250 tests incl. E2E, ~94 % coverage
+pytest -q --cov=app                  # ~380 tests incl. E2E, ~94 % coverage
 ruff check . && ruff format --check .
 
 cd frontend
