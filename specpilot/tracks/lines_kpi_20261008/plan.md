@@ -22,4 +22,4 @@
 ## Phase 1: Lines reviewed KPI
 
 - [x] **1.1 Backend metric.** `0e6b311` Update the schema and service as in the hotspot map. Tests: `test_summary_aggregates` asserts `lines_reviewed == 40`; `test_summary_empty` asserts `0` for no reviews and for no repos; the e2e dashboard flow asserts `lines_reviewed` instead of `helpful_rate`. Gate: `ruff check .`, `pytest`.
-- [~] **1.2 Frontend card.** Update the type and the Dashboard card (`FileCode2`, `data?.lines_reviewed?.toLocaleString() ?? "—"`, hint "Diff lines read by the AI"). Add a Vitest case for the card. Gate: `npm run lint`, `npm run typecheck`, `npm test`.
+- [x] **1.2 Frontend card.** `dd67dcd` Update the type and the Dashboard card (`FileCode2`, `data?.lines_reviewed?.toLocaleString() ?? "—"`, hint "Diff lines read by the AI"). Add a Vitest case for the card. Gate: `npm run lint`, `npm run typecheck`, `npm test`.
