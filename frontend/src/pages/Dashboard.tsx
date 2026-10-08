@@ -1,4 +1,4 @@
-import { CheckCircle2, GitPullRequest, Gauge, ThumbsUp } from "lucide-react";
+import { CheckCircle2, FileCode2, GitPullRequest, Gauge } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { InstallAppGate } from "@/components/onboarding/InstallAppGate";
@@ -107,10 +107,10 @@ export default function Dashboard() {
             loading={loading}
           />
           <MetricCard
-            label="Helpful rate"
-            value={formatPercent(data?.helpful_rate)}
-            icon={<ThumbsUp className="h-4 w-4" />}
-            hint="Developer acceptance"
+            label="Lines reviewed"
+            value={data?.lines_reviewed?.toLocaleString() ?? "—"}
+            icon={<FileCode2 className="h-4 w-4" />}
+            hint="Diff lines read by the AI"
             loading={loading}
           />
         </div>

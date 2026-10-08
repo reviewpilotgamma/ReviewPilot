@@ -181,7 +181,7 @@ export interface MetricsSummary {
   total_reviews: number;
   avg_score: number | null;
   pass_rate: number | null;
-  helpful_rate: number | null;
+  lines_reviewed: number;
   verdict_counts: Record<Verdict, number>;
   recent: ReviewListItem[];
 }

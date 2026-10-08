@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { routes } from "@/App";
+import Dashboard from "@/pages/Dashboard";
 import History from "@/pages/History";
 import Insights from "@/pages/Insights";
 import Rules from "@/pages/Rules";
@@ -47,6 +48,21 @@ const REVIEW: ReviewDetail = {
   review_context: null,
   my_feedback: null,
 };
+
+describe("Dashboard KPIs", () => {
+  it("shows lines reviewed in place of the helpful rate", async () => {
+    mockFetch({
+      "GET /api/v1/github/app": { configured: true, slug: "reviewpilot", name: "ReviewPilot", install_url: "", html_url: "" },
+      "GET /api/v1/metrics/summary": { total_reviews: 3, lines_reviewed: 12480, recent: [] },
+      "GET /api/v1/metrics/trend": [],
+    });
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText("Lines reviewed")).toBeInTheDocument();
+    expect(await screen.findByText((12480).toLocaleString())).toBeInTheDocument();
+    expect(screen.getByText("Diff lines read by the AI")).toBeInTheDocument();
+    expect(screen.queryByText("Helpful rate")).not.toBeInTheDocument();
+  });
+});
 
 describe("Removed Run review route", () => {
   it("shows Not Found at /run", async () => {
