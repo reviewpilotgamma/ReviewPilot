@@ -1,0 +1,9 @@
+{
+  "track_id": "banner_emoji_20261008",
+  "title": "Remove the aeroplane emoji from the review banner",
+  "type": "chore",
+  "status": "in progress",
+  "created": "2026-10-08",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}

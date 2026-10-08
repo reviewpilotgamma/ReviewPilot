@@ -57,4 +57,5 @@ On one real internal service:
 
 - [`artifacts/REQUIREMENTS.md`](../artifacts/REQUIREMENTS.md)
 - [`artifacts/ARCHITECTURE.md`](../artifacts/ARCHITECTURE.md)
-- [`implementation.md`](../implementation.md)
+- [`artifacts/API.md`](../artifacts/API.md)
+- [`artifacts/implementation.md`](../artifacts/implementation.md) (original build plan)

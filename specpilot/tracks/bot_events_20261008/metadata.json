@@ -1,0 +1,9 @@
+{
+  "track_id": "bot_events_20261008",
+  "title": "Hide bot-sender events from the Activity feed",
+  "type": "feature",
+  "status": "in progress",
+  "created": "2026-10-08",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}

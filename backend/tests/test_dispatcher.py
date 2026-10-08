@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import copy
+import json
 
 import pytest
 
+from app.models import Job, WebhookEvent
 from app.services import dispatcher
 from app.services.rules import upsert_rule
 from tests.conftest import load_fixture
@@ -138,3 +140,47 @@ def test_preview_is_compact():
     preview = dispatcher.build_preview("issue_comment", load_fixture("issue_comment_review.json"))
     assert '"pr_number": 7' in preview and "comment_excerpt" in preview
     assert len(preview) <= dispatcher.MAX_PREVIEW_CHARS
+
+
+def _queue_review(db, status="queued", pr_number=7, repo="api"):
+    event = WebhookEvent(event="pull_request", status="queued", payload_preview="{}")
+    db.add(event)
+    db.flush()
+    payload = {"owner": "acme", "repo": repo, "pr_number": pr_number}
+    db.add(Job(event_id=event.id, kind="review", payload=json.dumps(payload), status=status, max_attempts=3))
+    db.commit()
+
+
+def test_push_in_auto_mode_creates_followup_review(db):
+    result = dispatcher.plan_jobs(db, "pull_request", load_fixture("pull_request_synchronize.json"))
+    assert [j.kind for j in result.jobs] == ["review"]
+    payload = result.jobs[0].payload
+    assert payload["trigger"] == "push" and payload["requester"] is None
+    assert (payload["owner"], payload["repo"], payload["pr_number"]) == ("Acme", "API", 7)
+
+
+def test_push_in_on_demand_mode_ignored(db):
+    upsert_rule(
+        db,
+        "acme/api",
+        custom_instructions="",
+        verbosity="concise",
+        review_mode="on_demand",
+        enable_security=True,
+        user_id=None,
+    )
+    result = dispatcher.plan_jobs(db, "pull_request", load_fixture("pull_request_synchronize.json"))
+    assert result.jobs == [] and result.ignore_reason == "on-demand mode"
+
+
+def test_push_skipped_while_review_already_queued(db):
+    _queue_review(db)
+    result = dispatcher.plan_jobs(db, "pull_request", load_fixture("pull_request_synchronize.json"))
+    assert result.jobs == [] and result.ignore_reason == "review already queued"
+
+
+@pytest.mark.parametrize(("status", "pr_number", "repo"), [("running", 7, "api"), ("queued", 8, "api"), ("queued", 7, "web")])
+def test_push_queues_when_no_matching_review_waits(db, status, pr_number, repo):
+    _queue_review(db, status=status, pr_number=pr_number, repo=repo)
+    result = dispatcher.plan_jobs(db, "pull_request", load_fixture("pull_request_synchronize.json"))
+    assert [j.kind for j in result.jobs] == ["review"]

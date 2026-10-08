@@ -1,0 +1,9 @@
+{
+  "track_id": "lines_kpi_20261008",
+  "title": "Replace Helpful rate KPI with Lines reviewed",
+  "type": "feature",
+  "status": "in progress",
+  "created": "2026-10-08",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}

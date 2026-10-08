@@ -1,27 +1,22 @@
 from __future__ import annotations
 
-from app.models import ReviewFeedback
 from app.services import metrics
-from tests.conftest import make_user
 from tests.test_reviews_api import add_review
 
 
 def test_summary_aggregates(db):
-    user = make_user(db)
-    a = add_review(db, verdict="passed", score=9.0)
+    add_review(db, verdict="passed", score=9.0)
     add_review(db, verdict="warning", score=6.0)
     add_review(db, verdict="critical", score=3.0)
     add_review(db, verdict="passed", score=8.0)
     add_review(db, repo="other/repo", score=1.0)
     add_review(db, verdict="passed", score=10.0, age_days=60)
-    db.add_all([ReviewFeedback(review_id=a.id, user_id=user.id, rating="helpful")])
-    db.commit()
 
     result = metrics.summary(db, ["acme/api"], days=30)
     assert result.total_reviews == 4
     assert result.avg_score == 6.5
     assert result.pass_rate == 50.0
-    assert result.helpful_rate == 100.0
+    assert result.lines_reviewed == 40
     assert result.verdict_counts == {"passed": 2, "warning": 1, "critical": 1}
     assert len(result.recent) == 4
 
@@ -29,8 +24,10 @@ def test_summary_aggregates(db):
 def test_summary_empty(db):
     result = metrics.summary(db, ["acme/api"], days=30)
     assert result.total_reviews == 0
-    assert result.avg_score is None and result.pass_rate is None and result.helpful_rate is None
-    assert metrics.summary(db, [], days=30).recent == []
+    assert result.avg_score is None and result.pass_rate is None
+    assert result.lines_reviewed == 0
+    no_repos = metrics.summary(db, [], days=30)
+    assert no_repos.recent == [] and no_repos.lines_reviewed == 0
 
 
 def test_trend_fills_missing_days(db):

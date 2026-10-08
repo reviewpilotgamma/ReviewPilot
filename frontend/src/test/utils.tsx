@@ -10,10 +10,13 @@ import type { Installation, User } from "@/types/api";
 
 export const testUser: User = {
   id: 1,
-  github_id: 1001,
   username: "alice",
+  role: "dev",
   avatar_url: null,
   email: null,
+  github_id: 1001,
+  github_login: "alice",
+  github_linked: true,
   is_admin: false,
 };
 
@@ -61,6 +64,7 @@ export function renderWithProviders(ui: ReactElement, options: RenderOptions = {
     user: options.user === undefined ? testUser : options.user,
     isLoading: false,
     login: vi.fn(),
+    signIn: vi.fn(async () => testUser),
     logout: vi.fn(async () => undefined),
     ...options.auth,
   };

@@ -4,6 +4,8 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    /** Individual reasons when the server sends ``{"detail": {"errors": [...]}}``. */
+    public readonly details: string[] = [],
   ) {
     super(message);
     this.name = "ApiError";
@@ -31,8 +33,9 @@ export function buildQuery(params?: QueryParams): string {
   return query ? `?${query}` : "";
 }
 
-export function loginUrl(next?: string): string {
-  return `${API_BASE}/auth/login${buildQuery({ next })}`;
+/** Full-page navigation that installs the GitHub App (or authorizes, when already installed) and links GitHub. */
+export function githubConnectUrl(mode: "install" | "authorize" = "install"): string {
+  return `${API_BASE}/auth/github/connect${buildQuery({ mode })}`;
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -55,13 +58,17 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { detail?: unknown };
+    const errors = (body.detail as { errors?: unknown } | undefined)?.errors;
+    const details = Array.isArray(errors) ? errors.map(String) : [];
     const detail =
       typeof body.detail === "string"
         ? body.detail
-        : Array.isArray(body.detail)
-          ? "Validation failed"
-          : response.statusText || "Request failed";
-    throw new ApiError(response.status, detail);
+        : details.length
+          ? details.join(" ")
+          : Array.isArray(body.detail)
+            ? "Validation failed"
+            : response.statusText || "Request failed";
+    throw new ApiError(response.status, detail, details);
   }
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;

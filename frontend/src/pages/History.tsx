@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ReviewDrawer } from "@/components/reviews/ReviewDrawer";
 import { ReviewFilters, type FilterValues } from "@/components/reviews/ReviewFilters";
 import { ReviewsTable } from "@/components/reviews/ReviewsTable";
@@ -91,6 +91,11 @@ export default function History() {
       <Card
         title="PR reviews"
         description={data ? `${data.total.toLocaleString()} review${data.total === 1 ? "" : "s"}` : undefined}
+        actions={
+          <Link to="/insights" className="text-sm text-violet hover:underline">
+            Insights
+          </Link>
+        }
       >
         {isError ? (
           <ErrorState onRetry={() => void refetch()} />

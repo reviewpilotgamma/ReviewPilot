@@ -9,7 +9,9 @@ Record any change to this stack here *before* implementing it.
 - SQLAlchemy 2 with Alembic migrations
 - Pydantic v2 and pydantic-settings. Config is loaded from `backend/.env` (`app/core/config.py`).
 - httpx for GitHub and LLM HTTP calls
-- PyJWT (GitHub App JWT) and cryptography (Fernet token encryption)
+- PyJWT (GitHub App JWT and session cookie) and cryptography (Fernet token encryption)
+- Seeded username/password accounts (`dev`, `admin` roles) hashed with stdlib `hashlib.scrypt`. GitHub OAuth
+  is used only to link a user's GitHub identity while installing the GitHub App.
 - In-process, DB-backed job worker that claims jobs atomically, retries with backoff, and resumes jobs after a restart
 
 ## AI / LLM
@@ -18,12 +20,14 @@ Record any change to this stack here *before* implementing it.
 - The model sits behind the reviewer service so it can be swapped later. No Gemini-specific types should
   leak outside it.
 - Explicit Gemini Cached Contents for per-repo architecture/requirements documents (fallback: inline
-  injection when the pack is below the cache size gate). TTL via `GEMINI_CACHE_TTL_SECONDS`.
+  injection when the pack is below the cache size gate). Built synchronously on document upload/delete, with
+  a lazy rebuild on the next review as fallback. TTL via `GEMINI_CACHE_TTL_SECONDS`.
 - PDF text extraction for uploads via `pypdf`; multipart uploads via `python-multipart`.
 
 ## Storage
 
-- SQLite in WAL mode for the pilot (rules, reviews, jobs, uploaded documents, cache metadata).
+- SQLite in WAL mode for the pilot (rules, reviews, jobs, uploaded documents, cache metadata, and the
+  org-wide golden prompt override).
 - Postgres is a possible later target. Keep SQL portable through SQLAlchemy.
 
 ## Frontend (`frontend/`)
@@ -36,7 +40,8 @@ Record any change to this stack here *before* implementing it.
 ## Tooling
 
 - Backend: ruff (lint and isort), pytest, pytest-asyncio, pytest-cov, and respx (HTTP mocking)
-- Frontend: ESLint, `tsc` type checking, Vitest, and Testing Library
+- Frontend: ESLint, `tsc` type checking, Vitest with `@vitest/coverage-v8`, and Testing Library
+- Coverage floor: 95% lines on both sides (`pytest --cov` via `fail_under`, `npm run coverage` via Vitest thresholds)
 
 ## Deployment
 

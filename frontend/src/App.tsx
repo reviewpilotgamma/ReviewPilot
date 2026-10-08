@@ -6,9 +6,11 @@ import { FullPageSpinner } from "@/components/ui/Spinner";
 import { AuthProvider } from "@/context/AuthContext";
 
 const Landing = lazy(() => import("@/pages/Landing"));
+const Login = lazy(() => import("@/pages/Login"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Rules = lazy(() => import("@/pages/Rules"));
 const History = lazy(() => import("@/pages/History"));
+const Insights = lazy(() => import("@/pages/Insights"));
 const Activity = lazy(() => import("@/pages/Activity"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -28,6 +30,7 @@ export const routes = [
     element: <Root />,
     children: [
       { path: "/", element: <Landing /> },
+      { path: "/login", element: <Login /> },
       {
         element: <ProtectedRoute />,
         children: [
@@ -37,6 +40,7 @@ export const routes = [
               { path: "/dashboard", element: <Dashboard /> },
               { path: "/rules", element: <Rules /> },
               { path: "/history", element: <History /> },
+              { path: "/insights", element: <Insights /> },
               { path: "/activity", element: <Activity /> },
               { path: "/settings", element: <Settings /> },
             ],

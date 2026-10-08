@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Radio } from "lucide-react";
+import { ChevronDown, ChevronRight, FileWarning, Radio } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -11,10 +11,29 @@ import { useWorkspace } from "@/hooks/useAuth";
 import { useEvents } from "@/hooks/useEvents";
 import { eventsApi } from "@/services/endpoints";
 import { absoluteTime, prettyJson, relativeTime } from "@/lib/format";
-import type { EventStatus, WebhookEvent } from "@/types/api";
+import type { EventStatus, Job, WebhookEvent } from "@/types/api";
 
 const PAGE = 50;
 const STATUSES: EventStatus[] = ["queued", "processed", "ignored", "failed"];
+
+function JobError({ job }: { job: Job }) {
+  if (!job.last_error) return null;
+  if (job.error_code === "diff_too_large") {
+    return (
+      <div className="mt-2 rounded border border-amber/30 bg-amber-soft p-2 text-xs text-amber">
+        <p className="flex items-center gap-1.5 font-medium">
+          <FileWarning className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Diff too large for GitHub. Not reviewed. Split the PR into smaller ones.
+        </p>
+        <details className="mt-1">
+          <summary className="cursor-pointer text-muted">Details</summary>
+          <p className="mt-1 break-words font-mono text-muted">{job.last_error}</p>
+        </details>
+      </div>
+    );
+  }
+  return <p className="mt-2 break-words rounded bg-rose-soft p-2 font-mono text-xs text-rose">{job.last_error}</p>;
+}
 
 function EventDetails({ event }: { event: WebhookEvent }) {
   return (
@@ -49,9 +68,7 @@ function EventDetails({ event }: { event: WebhookEvent }) {
                     </>
                   )}
                 </p>
-                {job.last_error && (
-                  <p className="mt-2 break-words rounded bg-rose-soft p-2 font-mono text-xs text-rose">{job.last_error}</p>
-                )}
+                <JobError job={job} />
               </li>
             ))}
           </ul>
@@ -65,12 +82,16 @@ export default function Activity() {
   const { repos } = useWorkspace();
   const [status, setStatus] = useState<EventStatus | "">("");
   const [repo, setRepo] = useState("");
+  const [showBot, setShowBot] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [older, setOlder] = useState<WebhookEvent[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [exhausted, setExhausted] = useState(false);
 
-  const filters = useMemo(() => ({ status: status || undefined, repo: repo || undefined, limit: PAGE }), [status, repo]);
+  const filters = useMemo(
+    () => ({ status: status || undefined, repo: repo || undefined, include_bot: showBot || undefined, limit: PAGE }),
+    [status, repo, showBot],
+  );
   const { data, isLoading, isError, refetch, dataUpdatedAt } = useEvents(filters);
 
   const resetPaging = () => {
@@ -110,7 +131,22 @@ export default function Activity() {
       }
       description={dataUpdatedAt ? `Updated ${new Date(dataUpdatedAt).toLocaleTimeString()}` : undefined}
       actions={
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <label
+            className="inline-flex items-center gap-2 text-sm text-muted"
+            title="ReviewPilot's own PR comments come back as webhooks and are ignored"
+          >
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-[var(--signal)]"
+              checked={showBot}
+              onChange={(event) => {
+                setShowBot(event.target.checked);
+                resetPaging();
+              }}
+            />
+            Show bot events
+          </label>
           <Select
             aria-label="Filter by status"
             value={status}

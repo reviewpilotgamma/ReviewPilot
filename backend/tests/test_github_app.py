@@ -113,3 +113,31 @@ async def test_timeout_is_transient(mock_http):
     mock_http.post(TOKEN_URL).mock(side_effect=httpx.ReadTimeout("slow"))
     with pytest.raises(GitHubTransientError):
         await github_app.get_installation_token(99)
+
+
+async def test_pull_carries_head_sha(mock_http):
+    mock_http.post(TOKEN_URL).respond(201, json={"token": "t"})
+    mock_http.get(PR_URL).respond(200, json={"number": 7, "head": {"ref": "feat", "sha": "abc123"}})
+    assert (await github_app.get_pull(99, "acme", "api", 7)).head_sha == "abc123"
+
+
+async def test_compare_files(mock_http):
+    mock_http.post(TOKEN_URL).respond(201, json={"token": "t"})
+    mock_http.get(f"{GITHUB_API}/repos/acme/api/compare/old...new").respond(
+        200, json={"files": [{"filename": "app/x.py", "additions": 3, "deletions": 1}]}
+    )
+    assert await github_app.get_compare_files(99, "acme", "api", "old", "new") == [("app/x.py", 3, 1)]
+
+
+@pytest.mark.parametrize("status", [404, 422])
+async def test_compare_unavailable_returns_none(mock_http, status):
+    mock_http.post(TOKEN_URL).respond(201, json={"token": "t"})
+    mock_http.get(f"{GITHUB_API}/repos/acme/api/compare/old...new").respond(status, json={"message": "nope"})
+    assert await github_app.get_compare_files(99, "acme", "api", "old", "new") is None
+
+
+async def test_compare_server_error_raises(mock_http):
+    mock_http.post(TOKEN_URL).respond(201, json={"token": "t"})
+    mock_http.get(f"{GITHUB_API}/repos/acme/api/compare/old...new").respond(502)
+    with pytest.raises(GitHubTransientError):
+        await github_app.get_compare_files(99, "acme", "api", "old", "new")

@@ -11,7 +11,7 @@ class MetricsSummary(BaseModel):
     total_reviews: int
     avg_score: float | None
     pass_rate: float | None
-    helpful_rate: float | None
+    lines_reviewed: int
     verdict_counts: dict[str, int]
     recent: list[ReviewListItem]
 

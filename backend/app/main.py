@@ -13,12 +13,13 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from starlette.concurrency import run_in_threadpool
 
-from app.api import auth, documents, github, metrics, reviews, rules, webhooks
+from app.api import auth, documents, github, insights, metrics, prompt, reviews, rules, webhooks
 from app.api import settings as settings_api
 from app.core.config import get_settings
 from app.core.database import SessionLocal, run_migrations
 from app.core.http import close_http_client, get_http_client
 from app.core.logging import configure_logging, request_id_var
+from app.services.accounts import seed_accounts
 from app.services.errors import GitHubError, NotConfiguredError, ReauthRequired
 from app.services.worker import worker
 
@@ -26,10 +27,16 @@ logger = logging.getLogger(__name__)
 API_PREFIX = "/api/v1"
 
 
+def _seed_accounts() -> None:
+    with SessionLocal() as db:
+        seed_accounts(db, get_settings())
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     await run_in_threadpool(run_migrations)
+    await run_in_threadpool(_seed_accounts)
     get_http_client()
     if settings.WORKER_ENABLED:
         await worker.start()
@@ -56,10 +63,19 @@ def _register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse({"detail": "GitHub API request failed"}, status_code=502)
 
     @app.exception_handler(Exception)
-    async def _unhandled(_: Request, exc: Exception) -> JSONResponse:
-        rid = request_id_var.get()
-        logger.exception("Unhandled error: %s", exc.__class__.__name__)
-        return JSONResponse({"detail": "Internal server error", "request_id": rid}, status_code=500)
+    async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
+        # Runs in the outermost middleware, after request_id_middleware has reset the context var.
+        rid = getattr(request.state, "request_id", None) or request_id_var.get()
+        token = request_id_var.set(rid)
+        try:
+            logger.exception("Unhandled error: %s", exc.__class__.__name__)
+        finally:
+            request_id_var.reset(token)
+        return JSONResponse(
+            {"detail": "Internal server error", "request_id": rid},
+            status_code=500,
+            headers={"X-Request-ID": rid},
+        )
 
 
 def create_app() -> FastAPI:
@@ -77,6 +93,7 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def request_id_middleware(request: Request, call_next):  # noqa: ANN001, ANN202
         rid = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
+        request.state.request_id = rid
         token = request_id_var.set(rid)
         try:
             response = await call_next(request)
@@ -94,7 +111,7 @@ def create_app() -> FastAPI:
     )
     _register_exception_handlers(app)
 
-    for module in (auth, webhooks, rules, documents, reviews, metrics, github, settings_api):
+    for module in (auth, webhooks, rules, documents, prompt, reviews, insights, metrics, github, settings_api):
         app.include_router(module.router, prefix=API_PREFIX)
 
     # Legacy PoC webhook URL so existing GitHub App configurations keep working.

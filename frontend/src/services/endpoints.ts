@@ -3,16 +3,18 @@ import type {
   EventFilters,
   Feedback,
   Installation,
+  InsightState,
   MetricsSummary,
   Page,
   Preset,
+  PromptTemplate,
   Rating,
   Replies,
   ReviewDetail,
   ReviewFilters,
   ReviewListItem,
-  RepoDocument,
   RepoDocumentList,
+  RepoDocumentUpload,
   Rule,
   RuleInput,
   Settings,
@@ -31,7 +33,7 @@ const repoPath = (fullName: string) =>
 export const authApi = {
   me: () => http.get<User>("/auth/me"),
   logout: () => http.post<void>("/auth/logout"),
-  devLogin: () => http.post<User>("/auth/dev-login"),
+  login: (username: string, password: string) => http.post<User>("/auth/login", { username, password }),
 };
 
 export const githubApi = {
@@ -47,12 +49,20 @@ export const rulesApi = {
   save: (repo: string, body: RuleInput) => http.put<Rule>(`/rules${repoPath(repo)}`, body),
   reset: (repo: string) => http.delete<void>(`/rules${repoPath(repo)}`),
   listDocuments: (repo: string) => http.get<RepoDocumentList>(`/rules${repoPath(repo)}/documents`),
-  uploadDocument: (repo: string, file: File) => {
+  /** `warm: false` skips building the Gemini cache (use for all but the last file of a batch). */
+  uploadDocument: (repo: string, file: File, { warm = true }: { warm?: boolean } = {}) => {
     const form = new FormData();
     form.append("file", file);
-    return http.upload<RepoDocument>(`/rules${repoPath(repo)}/documents`, form);
+    const query = warm ? "" : "?warm=false";
+    return http.upload<RepoDocumentUpload>(`/rules${repoPath(repo)}/documents${query}`, form);
   },
   deleteDocument: (repo: string, id: number) => http.delete<void>(`/rules${repoPath(repo)}/documents/${id}`),
+};
+
+export const promptApi = {
+  get: () => http.get<PromptTemplate>("/prompt"),
+  save: (template: string) => http.put<PromptTemplate>("/prompt", { template }),
+  reset: () => http.delete<void>("/prompt"),
 };
 
 export const reviewsApi = {
@@ -60,6 +70,12 @@ export const reviewsApi = {
   get: (id: number) => http.get<ReviewDetail>(`/reviews/${id}`),
   feedback: (id: number, rating: Rating, notes: string) =>
     http.post<Feedback>(`/reviews/${id}/feedback`, { rating, notes }),
+};
+
+export const insightsApi = {
+  get: (repo: string) => http.get<InsightState>("/insights", { repo }),
+  analyze: (repo: string, rebuild = false) =>
+    http.post<InsightState>("/insights/analyze", { repo, rebuild }),
 };
 
 export const metricsApi = {

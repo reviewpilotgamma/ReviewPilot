@@ -1,32 +1,30 @@
-import { CheckCircle2, GitPullRequest, Gauge, ThumbsUp } from "lucide-react";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ONBOARDING_DONE_KEY, OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { CheckCircle2, FileCode2, GitPullRequest, Gauge } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { InstallAppGate } from "@/components/onboarding/InstallAppGate";
 import { ReviewsTable } from "@/components/reviews/ReviewsTable";
 import { Card } from "@/components/ui/Card";
 import { SegmentedControl } from "@/components/ui/Controls";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { FullPageSpinner } from "@/components/ui/Spinner";
 import { EmptyState, ErrorState } from "@/components/ui/States";
-import { useWorkspace } from "@/hooks/useAuth";
+import { useToast, useWorkspace } from "@/hooks/useAuth";
 import { useAppInfo } from "@/hooks/useInstallations";
 import { useMetricsSummary, useMetricsTrend } from "@/hooks/useMetrics";
 import { formatPercent, formatScore, scoreTone } from "@/lib/format";
 import type { TrendPoint } from "@/types/api";
+
+const GITHUB_ERRORS: Record<string, string> = {
+  state: "Connecting GitHub expired or was tampered with. Please try again.",
+  exchange: "GitHub did not confirm the connection. Please try again.",
+  not_configured: "The GitHub App is not configured yet. Ask an admin to complete Settings.",
+};
 
 const PERIODS = [
   { value: "7", label: "7 days" },
   { value: "30", label: "30 days" },
   { value: "90", label: "90 days" },
 ] as const;
-
-function readDone(): boolean {
-  try {
-    return localStorage.getItem(ONBOARDING_DONE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
 
 function Sparkline({ points }: { points: TrendPoint[] }) {
   const max = Math.max(1, ...points.map((p) => p.reviews));
@@ -46,20 +44,28 @@ function Sparkline({ points }: { points: TrendPoint[] }) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { installations, isLoading: installsLoading, isError: installsError, refresh, selectedRepo } = useWorkspace();
-  const { data: app, isLoading: appLoading } = useAppInfo();
+  const { isLoading: appLoading } = useAppInfo();
+  const toast = useToast();
+  const [params, setParams] = useSearchParams();
   const [period, setPeriod] = useState<(typeof PERIODS)[number]["value"]>("30");
-  const [onboardingDone, setOnboardingDone] = useState(readDone);
   const days = Number(period);
   const repo = selectedRepo || undefined;
   const summary = useMetricsSummary(repo, days);
   const trend = useMetricsTrend(repo, days);
 
+  useEffect(() => {
+    const error = params.get("github_error");
+    if (error) {
+      toast.error(GITHUB_ERRORS[error] ?? "Could not connect GitHub, please try again.");
+      params.delete("github_error");
+      setParams(params, { replace: true });
+    }
+  }, [params, setParams, toast]);
+
   if (installsLoading || appLoading) return <FullPageSpinner />;
   if (installsError) return <ErrorState message="Could not load your GitHub installations." onRetry={() => void refresh()} />;
 
-  const showWizard =
-    !app?.local_mode && (installations.length === 0 || (!onboardingDone && summary.data?.total_reviews === 0));
-  if (showWizard) return <OnboardingWizard onComplete={() => setOnboardingDone(true)} />;
+  if (installations.length === 0) return <InstallAppGate />;
 
   const data = summary.data;
   const loading = summary.isLoading;
@@ -101,10 +107,10 @@ export default function Dashboard() {
             loading={loading}
           />
           <MetricCard
-            label="Helpful rate"
-            value={formatPercent(data?.helpful_rate)}
-            icon={<ThumbsUp className="h-4 w-4" />}
-            hint="Developer acceptance"
+            label="Lines reviewed"
+            value={data?.lines_reviewed?.toLocaleString() ?? "—"}
+            icon={<FileCode2 className="h-4 w-4" />}
+            hint="Diff lines read by the AI"
             loading={loading}
           />
         </div>

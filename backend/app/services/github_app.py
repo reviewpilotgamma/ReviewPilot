@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 API_VERSION = "2022-11-28"
 TOKEN_SAFETY_MARGIN_SECONDS = 60
+MAX_REPO_PAGES = 20
 
 
 def base_headers() -> dict[str, str]:
@@ -166,6 +167,7 @@ class PullRequest:
     additions: int
     deletions: int
     changed_files: int
+    head_sha: str = ""
 
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> PullRequest:
@@ -181,6 +183,7 @@ class PullRequest:
             additions=int(data.get("additions") or 0),
             deletions=int(data.get("deletions") or 0),
             changed_files=int(data.get("changed_files") or 0),
+            head_sha=(data.get("head") or {}).get("sha", ""),
         )
 
 
@@ -197,6 +200,25 @@ async def get_pull_diff(installation_id: int, owner: str, repo: str, number: int
         accept="application/vnd.github.v3.diff",
     )
     return response.text
+
+
+async def get_compare_files(
+    installation_id: int, owner: str, repo: str, base_sha: str, head_sha: str
+) -> list[tuple[str, int, int]] | None:
+    """Files changed between two commits as (path, additions, deletions); None when GitHub can't compare them."""
+    try:
+        response = await _installation_request(
+            installation_id, "GET", f"/repos/{owner}/{repo}/compare/{base_sha}...{head_sha}"
+        )
+    except GitHubPermanentError as exc:
+        # 404: a commit is gone (force-push); 422: no common history.
+        if exc.status_code in (404, 422):
+            return None
+        raise
+    return [
+        (f.get("filename", ""), int(f.get("additions") or 0), int(f.get("deletions") or 0))
+        for f in response.json().get("files") or []
+    ]
 
 
 async def post_issue_comment(installation_id: int, owner: str, repo: str, number: int, body: str) -> int:
@@ -237,3 +259,17 @@ async def get_app() -> dict[str, Any]:
 
 async def list_app_installations() -> list[dict[str, Any]]:
     return (await _app_request("/app/installations?per_page=100")).json()
+
+
+async def list_installation_repositories(installation_id: int) -> list[dict[str, Any]]:
+    """Every repository an installation grants (installation token, paginated)."""
+    repos: list[dict[str, Any]] = []
+    for page in range(1, MAX_REPO_PAGES + 1):
+        response = await _installation_request(
+            installation_id, "GET", f"/installation/repositories?per_page=100&page={page}"
+        )
+        batch = response.json().get("repositories", [])
+        repos.extend(batch)
+        if len(batch) < 100:
+            break
+    return repos

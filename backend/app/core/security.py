@@ -1,7 +1,8 @@
-"""Cryptographic helpers: webhook HMAC verification, session JWTs, token encryption, masking."""
+"""Cryptographic helpers: webhook HMAC verification, password hashing, session JWTs, token encryption, masking."""
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import logging
@@ -20,7 +21,6 @@ logger = logging.getLogger(__name__)
 MASK_PREFIX = "••••"
 SESSION_COOKIE = "rp_session"
 OAUTH_STATE_COOKIE = "rp_oauth_state"
-OAUTH_NEXT_COOKIE = "rp_next"
 CSRF_HEADER = "X-Requested-With"
 CSRF_HEADER_VALUE = "ReviewPilot"
 
@@ -32,6 +32,33 @@ def verify_github_signature(raw_body: bytes, signature_header: str | None, secre
         return False
     expected = "sha256=" + hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature_header)
+
+
+# --------------------------------------------------------------------------- passwords
+_SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2**14, 8, 1
+
+
+def _scrypt(password: str, salt: bytes, n: int, r: int, p: int) -> bytes:
+    return hashlib.scrypt(password.encode(), salt=salt, n=n, r=r, p=p, dklen=32)
+
+
+def hash_password(password: str) -> str:
+    """``scrypt$n$r$p$salt$hash`` with a random per-password salt (stdlib only)."""
+    salt = secrets.token_bytes(16)
+    digest = _scrypt(password, salt, _SCRYPT_N, _SCRYPT_R, _SCRYPT_P)
+    b64 = base64.b64encode
+    return f"scrypt${_SCRYPT_N}${_SCRYPT_R}${_SCRYPT_P}${b64(salt).decode()}${b64(digest).decode()}"
+
+
+def verify_password(password: str, stored: str | None) -> bool:
+    try:
+        scheme, n, r, p, salt, digest = (stored or "").split("$")
+        if scheme != "scrypt":
+            return False
+        actual = _scrypt(password, base64.b64decode(salt), int(n), int(r), int(p))
+        return hmac.compare_digest(actual, base64.b64decode(digest))
+    except ValueError:
+        return False
 
 
 # --------------------------------------------------------------------------- secrets with dev fallbacks
@@ -53,12 +80,12 @@ def _fernet() -> Fernet:
 
 
 # --------------------------------------------------------------------------- session JWT
-def create_session_token(user_id: int, github_login: str) -> str:
+def create_session_token(user_id: int, username: str) -> str:
     settings = get_settings()
     now = int(time.time())
     payload = {
         "sub": str(user_id),
-        "login": github_login,
+        "login": username,
         "iat": now,
         "exp": now + settings.SESSION_TTL_HOURS * 3600,
         "typ": "session",

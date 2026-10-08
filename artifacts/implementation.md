@@ -1,7 +1,29 @@
 # ReviewPilot — Implementation Plan
 
-> Source: `Application-Prompt.md` (same folder).
+> **Status: original build plan (historical).** This is the plan the `backend/` and `frontend/` code was built
+> from. It is kept for its design rationale. Where the code has moved on, the table below and the notes in each
+> section say so. For the system as it runs today, read [`ARCHITECTURE.md`](ARCHITECTURE.md) and
+> [`API.md`](API.md).
+>
+> Source: [`Application-Prompt.md`](Application-Prompt.md) (same folder).
 > Goal: Rebuild the ReviewPilot PoC into a production-ready prototype with a decoupled `backend/` (FastAPI + SQLite + Pydantic v2) and `frontend/` (React + Vite + TypeScript). The prototype must have GitHub OAuth, tenant isolation, rules injected into live reviews, saved reviews with scores and verdicts, and webhook jobs that survive restarts.
+
+## Changes since this plan (checked 8 October 2026)
+
+| Area | This plan says | The code does now | Track |
+|---|---|---|---|
+| Sign-in (§9, D5) | GitHub OAuth login; `GET /auth/login` | Seeded username/password accounts (`dev`, `admin`) via `POST /auth/login`. GitHub OAuth only links a GitHub identity while installing the App (`GET /auth/github/connect`). | `credential_auth_20261008` |
+| Admins (D11, §3) | `ADMIN_GITHUB_LOGINS` allow-list | `users.role = admin`. Admins see every App installation without linking GitHub, and can grant repositories to users (`scripts/grant_repo.py`, `repo_grants` table). | `credential_auth_20261008` |
+| Diff size (§8.2) | Truncate at `MAX_DIFF_CHARS=120000` | `MAX_DIFF_CHARS=0` (no cap) by default. Large diffs are split into context-window-sized batches, reviewed concurrently and merged; noise files are skipped and named in the comment. | `diff_batching_20261007` |
+| Prompt (§8.4) | Fixed system prompt in code | Admin-editable org-wide golden prompt (`review_prompt` table) with `{{slot}}` placeholders. | `prompt_recipe_20261007` |
+| Review format (§8.4, §8.7) | Executive Summary, Findings, Recommendations, What Looks Solid; banner `## ✈️ ReviewPilot Architectural Audit` | Adds a **Scope Check** section (PR description vs diff), bulleted file-specific findings, wider verdict-line spacing, and no emoji in the banner. | `scope_check_20261008`, `review_format_20261008`, `banner_emoji_20261008`, `verdict_spacing_20261008` |
+| Grounding documents | Not in the plan | Per-repo architecture/requirement documents (txt, md, rst, pdf) injected into reviews, using Gemini Cached Contents when large. | `doc_cache_20261005`, `doc_cache_warm_20261007` |
+| Insights | Not in the plan | `/insights` page: on-demand recurring themes with rolling snapshots (`review_insight_snapshots`). | `review_insights_20261007` |
+| Dashboard KPI (§11, §13.7) | Helpful Rate card, `helpful_rate` in `MetricsSummary` | **Lines reviewed** card and `lines_reviewed` field. Per-review feedback counts are unchanged. | `lines_kpi_20261008` |
+| Activity (§7.6) | All events listed | Bot-sender events are hidden unless `include_bot=true` (**Show bot events**); stored bot events were purged by migration `0007`. | `bot_events_20261008` |
+| Onboarding (§14) | 4-step `OnboardingWizard` | An **Install GitHub App** gate on the dashboard and navbar (`InstallAppGate`, `GithubConnect`). Rules are set on the Rules page. | `credential_auth_20261008` |
+| API reference (§10) | Endpoint table here | Moved to [`API.md`](API.md), which covers the added routes (login, documents, prompt, insights). | — |
+| Default model | `gemini-2.0-flash` | Still the code default; `.env.example` now suggests `gemini-3.5-flash-lite` with `GEMINI_CONTEXT_TOKENS`. | — |
 
 ---
 
@@ -41,13 +63,13 @@ The source prompt has a few contradictions and gaps. Implementation follows thes
 | D2 | Finding severity labels | Part 1: high/medium/low. Part 2: Critical/Warning/Passed | Use **Critical / Warning / Passed** (Part 2 is authoritative). |
 | D3 | Score & verdict extraction | "Automated verdict and score extraction" (method unspecified) | The LLM must end its output with a **machine-readable metadata line**: `<!-- reviewpilot-meta: {"score": 8.2, "verdict": "warning"} -->`. The backend parses it, and falls back to heuristics if it's missing (§8.6). The HTML comment is invisible on GitHub. |
 | D4 | ORM | "SQLAlchemy / SQLModel" | **SQLAlchemy 2.0 (sync engine)** + **Alembic** migrations. FastAPI runs sync DB work in its threadpool. The worker uses `asyncio.to_thread` for DB calls. |
-| D5 | OAuth app type | "GitHub OAuth (`read:user`, `repo` scopes)" | Log in with the **GitHub App's own OAuth credentials** (Client ID / Client Secret from the same App). This produces a *user-to-server* token, which allows `GET /user/installations`, the basis of tenant isolation. GitHub Apps ignore scopes, so permissions come from the App configuration. Still send `scope=read:user` for forward compatibility. |
+| D5 | OAuth app type *(superseded: OAuth now only links GitHub, see Changes)* | "GitHub OAuth (`read:user`, `repo` scopes)" | Log in with the **GitHub App's own OAuth credentials** (Client ID / Client Secret from the same App). This produces a *user-to-server* token, which allows `GET /user/installations`, the basis of tenant isolation. GitHub Apps ignore scopes, so permissions come from the App configuration. Still send `scope=read:user` for forward compatibility. |
 | D6 | Durable jobs | "Structured task execution with error tracking, retry policies, persistent audit logs" | Add a **`jobs` table** (an addition to the 5 specified tables) and an **in-process, DB-backed async worker** that polls the table. Jobs survive restarts because they live in SQLite. No Redis or Celery is needed for the prototype. |
 | D7 | Webhook dedupe | Not specified | Store `X-GitHub-Delivery` as `webhook_events.delivery_id` (UNIQUE). Acknowledge duplicate deliveries with 200 and don't process them again. |
 | D8 | Webhook URL | PoC used `POST /webhook` | New canonical route: `POST /api/v1/webhooks/github`. Keep `POST /webhook` as an **alias** so an existing GitHub App config keeps working. |
 | D9 | `@bot plan` content | "Post planned execution checklist comment" | Generate a checklist with Gemini from the PR title, description and diff stats (short prompt, §8.9). If Gemini fails, fall back to the canned `plan` template in `bot_replies.json`. |
 | D10 | Both triggers in one comment | Not specified | If a comment contains both `@review` and `@bot plan`, enqueue **two jobs**: review first, then plan. |
-| D11 | Settings write access | Not specified | Settings that change server credentials (`PUT /settings`, canned replies) are limited to users whose GitHub login is in `ADMIN_GITHUB_LOGINS`. Other users get read-only, masked values. |
+| D11 | Settings write access *(superseded: `admin` role, see Changes)* | Not specified | Settings that change server credentials (`PUT /settings`, canned replies) are limited to users whose GitHub login is in `ADMIN_GITHUB_LOGINS`. Other users get read-only, masked values. |
 | D12 | "Live" activity feed | Not specified | **Polling** every 5 s via TanStack Query `refetchInterval`. No WebSocket/SSE in the prototype. |
 | D13 | Styling | Colors and fonts specified, framework not | **Tailwind CSS v3** with the palette as theme tokens, plus a small set of custom CSS utilities for glass panels. |
 | D14 | Token at rest | "Encrypted / protected" | Encrypt `users.access_token` with **Fernet** (`cryptography`) using `TOKEN_ENCRYPTION_KEY`. |
@@ -206,54 +228,19 @@ ReviewPilot/
 
 ### 3.1 `backend/.env.example`
 
-```dotenv
-# --- Runtime ---
-ENV=development                         # development | production
-API_BASE_URL=http://localhost:8000      # public URL of backend (used for OAuth callback)
-FRONTEND_ORIGIN=http://localhost:5173   # CORS allow-origin + post-login redirect target
-DATABASE_URL=sqlite:///./reviewpilot.db
-LOG_LEVEL=INFO
-
-# --- GitHub App ---
-GITHUB_APP_ID=
-GITHUB_APP_SLUG=                        # used for https://github.com/apps/<slug>/installations/new
-GITHUB_WEBHOOK_SECRET=
-GITHUB_PRIVATE_KEY_PATH=./secrets/reviewpilot.private-key.pem
-GITHUB_CLIENT_ID=                       # from the same GitHub App (OAuth section)
-GITHUB_CLIENT_SECRET=
-GITHUB_API_URL=https://api.github.com
-
-# --- Gemini ---
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-2.0-flash
-GEMINI_TEMPERATURE=0.2
-GEMINI_MAX_OUTPUT_TOKENS=8192
-
-# --- Auth/Security ---
-SESSION_SECRET=                         # >= 32 random bytes (python -c "import secrets;print(secrets.token_urlsafe(48))")
-SESSION_TTL_HOURS=8
-TOKEN_ENCRYPTION_KEY=                   # Fernet key (python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())")
-ADMIN_GITHUB_LOGINS=                    # comma-separated GitHub logins allowed to edit settings
-
-# --- Review engine ---
-MAX_DIFF_CHARS=120000
-MAX_COMMENT_CHARS=65000                 # GitHub hard limit is 65536
-INSTALLATION_TOKEN_TTL_SECONDS=3000     # 50 min cache (GitHub tokens live 60 min)
-
-# --- Worker ---
-WORKER_CONCURRENCY=2
-WORKER_POLL_INTERVAL_SECONDS=1.0
-JOB_MAX_ATTEMPTS=3
-```
+The current file is [`backend/.env.example`](../backend/.env.example); every setting and its default is listed in
+[`ARCHITECTURE.md` §11](ARCHITECTURE.md#11-configuration-backendenv). Compared with this plan: `ADMIN_GITHUB_LOGINS`
+is gone (replaced by the `SEED_*` account settings), `MAX_DIFF_CHARS` defaults to `0`, and the batching
+(`DIFF_BATCH_*`, `MAX_DIFF_BATCHES`, `GEMINI_CONTEXT_TOKENS`), document cache (`GEMINI_CACHE_TTL_SECONDS`) and
+`JOB_TIMEOUT_SECONDS` settings were added.
 
 ### 3.2 `core/config.py` — `Settings(BaseSettings)`
 
 - `model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")`.
 - Typed fields for all variables above. Secrets use `SecretStr` (`GITHUB_WEBHOOK_SECRET`, `GITHUB_CLIENT_SECRET`, `GEMINI_API_KEY`, `SESSION_SECRET`, `TOKEN_ENCRYPTION_KEY`).
-- `admin_logins: set[str]` computed property: split `ADMIN_GITHUB_LOGINS` on commas, strip, lowercase.
 - `is_production` property.
 - Validators:
-  - `MAX_DIFF_CHARS` must be > 0.
+  - `MAX_DIFF_CHARS` must be ≥ 0 (`0` = no cap).
   - In production, `SESSION_SECRET` must be ≥ 32 chars and `TOKEN_ENCRYPTION_KEY` must be set. Otherwise fail startup.
   - GitHub/Gemini credentials **may be empty** at startup (they can be configured later through Settings). Endpoints that need them return `503 {"detail": "GitHub App not configured"}` / `"Gemini not configured"`.
 - `get_settings()` is wrapped in `functools.lru_cache`. `reload_settings()` clears the cache. It is called after `PUT /settings` writes `.env`. Services must call `get_settings()` at use time, not at import time, so a reload takes effect.
@@ -627,6 +614,9 @@ After each job finishes, recompute the parent `webhook_events.status`:
 The review is saved **before** posting. If posting fails and the job retries, the LLM is not called again (step 2).
 
 ### 8.2 Diff truncation
+
+> **Changed:** `MAX_DIFF_CHARS` now defaults to `0` (no cap), and diffs are reviewed in batches instead. See
+> [`ARCHITECTURE.md` §8.3](ARCHITECTURE.md#83-review-job-servicesreviewerpy). The truncation below only applies when an operator sets a positive cap.
 ```python
 def truncate_diff(diff: str, limit: int) -> tuple[str, bool]:
     if len(diff) <= limit:
@@ -779,8 +769,11 @@ SEV_RE  = re.compile(r"\*\*(Critical|Warning|Passed)\*\*", re.IGNORECASE)
 6. **Clean body**: remove all `META_RE` matches from the markdown before posting.
 
 ### 8.7 Comment assembly
+
+> **Changed:** the banner no longer has an emoji, the verdict line uses wider `&emsp;·&emsp;` separators, and
+> partial-review notes list files that were not reviewed, split, or skipped as generated.
 ```markdown
-## ✈️ ReviewPilot Architectural Audit
+## ReviewPilot Architectural Audit
 
 **Verdict:** 🟢 Passed | 🟡 Warning | 🔴 Critical Risk   ·   **Health score:** 8.2/10   ·   **Lines reviewed:** 412
 {requested_by_line}            # "_Requested by @alice: “focus on auth boundaries”_" when trigger=comment
@@ -815,136 +808,54 @@ _Triggered via ReviewPilot · Architecture Gatekeeper_
 
 ## 9. User Authentication & Tenant Isolation
 
-### 9.1 Login (`GET /api/v1/auth/login`)
-1. Generate `state = secrets.token_urlsafe(32)`. Set cookie `rp_oauth_state` (HttpOnly, SameSite=Lax, max-age 600).
-2. Optional `?next=/rules`: validate that it's a **relative path starting with `/`** (prevents open redirect) and store it in a cookie `rp_next`.
-3. Redirect 302 → `https://github.com/login/oauth/authorize?client_id=...&redirect_uri={API_BASE_URL}/api/v1/auth/callback&state=...&scope=read:user`.
+> **Rewritten 8 October 2026.** The plan's GitHub OAuth login was replaced by seeded credentials
+> (`credential_auth_20261008`). This section describes the code.
 
-### 9.2 Callback (`GET /api/v1/auth/callback?code&state`)
-1. Compare `state` with the cookie using `hmac.compare_digest`. On mismatch or missing state → redirect to `{FRONTEND_ORIGIN}/?auth_error=state`.
-2. `exchange_code(code)` → `access_token`. On an error response (`error` field) → redirect with `auth_error=exchange`.
-3. `get_user(token)`, `get_primary_email(token)`.
-4. Upsert `users` by `github_id`: update username, avatar and email, store the **encrypted** access token, set `last_login_at`.
-5. Create the session JWT and set cookie `rp_session` (HttpOnly, SameSite=Lax, Secure in prod, `max_age = SESSION_TTL_HOURS*3600`, path `/`).
-6. Delete the `rp_oauth_state` and `rp_next` cookies.
-7. Redirect → `{FRONTEND_ORIGIN}{next or "/dashboard"}`.
+### 9.1 Accounts and sign-in (`services/accounts.py`, `POST /api/v1/auth/login`)
+- On startup, `seed_accounts` creates or updates two users from settings: `SEED_DEV_USERNAME`/`SEED_DEV_PASSWORD`
+  (role `dev`) and `SEED_ADMIN_USERNAME`/`SEED_ADMIN_PASSWORD` (role `admin`). Passwords are hashed with
+  `hashlib.scrypt` and re-hashed only when they change. Outside production, empty passwords default to `dev12345` /
+  `admin12345`; in production an account without a password is not created.
+- `POST /auth/login {username, password}` (CSRF header required): case-insensitive lookup, constant-time check
+  against a dummy hash for unknown users, and an in-memory throttle (5 failures in 5 minutes per username → 429).
+- On success: set `rp_session` (HS256 JWT, `HttpOnly`, `SameSite=Lax`, `Secure` in production,
+  `max_age = SESSION_TTL_HOURS*3600`) and return `UserOut` with `role`, `is_admin` and `github_linked`.
+
+### 9.2 Linking GitHub (`GET /auth/github/connect`, `GET /auth/callback`)
+1. `connect?mode=install` (default) redirects to `https://github.com/apps/<slug>/installations/new?state=…`;
+   `mode=authorize` goes straight to GitHub OAuth. The `state` is stored in the `rp_oauth_state` cookie.
+2. GitHub returns to `/auth/callback`. The `state` must match the cookie (`hmac.compare_digest`) and the user must
+   still be signed in, else redirect to `/dashboard?github_error=state`.
+3. If the install returned without a `code` (App not set to request user authorization on install), redirect to
+   OAuth authorize with the same `state`.
+4. Exchange the code, read the profile and primary email, store `github_id`, `github_login`, `avatar_url`, `email`
+   and the **Fernet-encrypted** token on the signed-in user, clear that user's access cache, and redirect to
+   `/dashboard`.
 
 ### 9.3 Session dependencies (`api/deps.py`)
-- `get_current_user`: read the `rp_session` cookie → decode → load the user. A missing or invalid token, or a missing user → **401**.
-- `get_optional_user` for public endpoints.
-- `require_admin`: `user.username.lower() in settings.admin_logins`, else **403**.
-- `GET /auth/me` → `{id, github_id, username, avatar_url, email, is_admin}`.
-- `POST /auth/logout` → delete the cookie and return 204. (Stateless JWT: logout = cookie removal. Acceptable for the prototype.)
+- `get_current_user`: decode `rp_session`, load the user; missing or invalid → **401**.
+- `require_admin`: `user.role == "admin"`, else **403**.
+- `csrf_protect`: mutating requests must carry `X-Requested-With: ReviewPilot`.
+- `POST /auth/logout` deletes the cookie (stateless JWT).
 
-**CSRF**: SameSite=Lax blocks cross-site POST/PUT with cookies. As a second layer, mutating endpoints require the header `X-Requested-With: ReviewPilot`, which the frontend client always sends. A cross-site form cannot set it, and CORS blocks it cross-origin.
-
-### 9.4 Tenant isolation (`services/access.py`)
-- `get_accessible_repos(user) -> dict[str, RepoInfo]` (key = lowercase `owner/repo`):
-  1. Decrypt the user token.
-  2. `list_user_installations(token)` → for each installation, `list_installation_repos(token, inst.id)`.
-  3. Build `{full_name: {installation_id, account_login, account_type, private, html_url}}`.
-  4. Cache in memory per `user_id` for **5 minutes** (`{user_id: (expires_at, data)}`). Clear the whole cache on `installation*` webhooks.
-  5. If GitHub returns **401** (token expired or revoked) → raise `ReauthRequired` → API **401** with `{"detail":"reauth_required"}`. The frontend then redirects to login.
-- `require_repo_access(repo_full_name)` dependency → **404** if the repo isn't in the set. Use 404, not 403, so repo existence isn't leaked.
-- **Every** data endpoint filters by this set:
-  - rules: only for accessible repos;
-  - reviews, metrics, events: `WHERE repo_full_name IN (:accessible)`;
-  - feedback: the review's repo must be accessible.
+### 9.4 Tenant isolation (`services/access.py`, `deps.get_accessible`)
+- **Admin** (and the App configured): every repository of every App installation, fetched with the App's own
+  credentials. No GitHub link needed.
+- **Everyone else:** repositories reachable through `GET /user/installations` with the user's decrypted token, plus
+  `repo_grants` rows for repositories the App is still installed on. No link, or a revoked token, contributes
+  nothing; the UI then shows the Install GitHub App gate instead of logging the user out.
+- Results are cached per user for 5 minutes (`?refresh=true` bypasses it) and the whole cache is cleared on
+  `installation*` webhooks.
+- `require_repo_access` returns **404** for repositories outside the set. Rules, documents, reviews, feedback,
+  metrics, insights and events all filter by it.
 
 ---
 
 ## 10. REST API Reference (`/api/v1`)
 
-All responses are JSON. List endpoints return `Page[T] = {items: T[], total: int, page: int, page_size: int}`. Errors: `{detail: string}`.
-Auth column: **P** = public, **U** = logged-in user, **A** = admin, **S** = GitHub signature.
-
-| Method & Path | Auth | Request | Response / Behavior |
-|---|---|---|---|
-| `GET /auth/login?next=` | P | — | 302 to GitHub |
-| `GET /auth/callback` | P | `code, state` | 302 to frontend, sets cookie |
-| `GET /auth/me` | U | — | `UserOut` |
-| `POST /auth/logout` | U | — | 204, clears cookie |
-| `POST /webhooks/github` (+ alias `POST /webhook`) | S | GitHub payload | `200 {"status": ...}` / 401 |
-| `GET /webhooks/events` | U | `status?, repo?, limit≤200, before_id?` | `EventOut[]` (with jobs) |
-| `GET /github/app` | P | — | `{configured: bool, slug, name, install_url, html_url}` (from settings + `GET /app`, cached 10 min) |
-| `GET /github/installations` | U | — | `[{installation_id, account_login, account_type, avatar_url, repos:[{full_name, private, html_url, has_rules}]}]` |
-| `GET /rules/presets` | P | — | `PresetOut[]` |
-| `GET /rules` | U | — | `RuleOut[]` for every accessible repo (defaults filled; `is_default: bool`) |
-| `GET /rules/{owner}/{repo}` | U + repo | — | `RuleOut` |
-| `PUT /rules/{owner}/{repo}` | U + repo | `RuleIn` | upsert → `RuleOut` |
-| `DELETE /rules/{owner}/{repo}` | U + repo | — | 204 (reset to defaults) |
-| `GET /reviews` | U | `repo?, author?, verdict?, q? (title search), page=1, page_size=20 (≤100), sort=-created_at` | `Page[ReviewListItem]` |
-| `GET /reviews/{id}` | U + repo | — | `ReviewDetail` (incl. `full_markdown`, `pr_url`, `my_feedback`) |
-| `POST /reviews/{id}/feedback` | U + repo | `{rating, notes?}` | upsert → `FeedbackOut` |
-| `GET /reviews/{id}/feedback` | U + repo | — | `FeedbackOut[]` |
-| `GET /metrics/summary` | U | `repo?, days=30 (1–365)` | `MetricsSummary` |
-| `GET /metrics/trend` | U | `repo?, days=30` | `[{date, reviews, avg_score}]` (daily buckets) |
-| `GET /settings` | U | — | `SettingsOut` (masked) |
-| `PUT /settings` | A | `SettingsIn` (partial) | writes `.env`, reloads → `SettingsOut` |
-| `POST /settings/validate/gemini` | A | `{api_key?, model?}` (falls back to stored) | `{ok, message, model}` |
-| `POST /settings/validate/github` | A | — | `{ok, app_name?, installations?, message}` |
-| `GET /settings/replies` | U | — | `{welcome, plan, error, empty_diff}` |
-| `PUT /settings/replies` | A | same | saved → same |
-| `GET /health` | P | — | `{status, db, worker}` |
-
-### 10.1 Key schemas (Pydantic v2, `model_config = ConfigDict(from_attributes=True)`)
-```python
-class Verdict(StrEnum): passed="passed"; warning="warning"; critical="critical"
-class Verbosity(StrEnum): concise="concise"; detailed="detailed"
-class ReviewMode(StrEnum): auto="auto"; on_demand="on_demand"
-class Rating(StrEnum): helpful="helpful"; unhelpful="unhelpful"
-
-class RuleIn(BaseModel):
-    custom_instructions: str = Field("", max_length=10_000)
-    verbosity: Verbosity = Verbosity.concise
-    review_mode: ReviewMode = ReviewMode.auto
-    enable_security: bool = True
-
-class RuleOut(RuleIn):
-    repo_full_name: str
-    updated_at: datetime | None
-    is_default: bool
-
-class ReviewListItem(BaseModel):
-    id: int; repo_full_name: str; pr_number: int; pr_title: str; author: str
-    verdict: Verdict; score: float; lines_reviewed: int; summary: str
-    created_at: datetime; trigger: str; pr_url: str     # https://github.com/{repo}/pull/{n}
-
-class ReviewDetail(ReviewListItem):
-    full_markdown: str; requester: str | None; diff_truncated: bool; model: str
-    my_feedback: FeedbackOut | None
-    feedback_counts: dict[str, int]                   # {"helpful": n, "unhelpful": m}
-
-class FeedbackIn(BaseModel):
-    rating: Rating
-    notes: str = Field("", max_length=2_000)
-
-class MetricsSummary(BaseModel):
-    total_reviews: int
-    avg_score: float | None           # None when no reviews
-    pass_rate: float | None           # 0–100, 1 decimal
-    helpful_rate: float | None        # 0–100, 1 decimal
-    verdict_counts: dict[Verdict, int]
-    recent: list[ReviewListItem]      # latest 10
-
-class SettingsOut(BaseModel):
-    github_app_id: str; github_app_slug: str
-    github_webhook_secret: str        # masked
-    github_private_key_path: str; github_private_key_present: bool
-    github_client_id: str; github_client_secret: str   # masked
-    gemini_api_key: str               # masked
-    gemini_model: str
-    max_diff_chars: int
-    is_admin: bool
-
-class SettingsIn(BaseModel):          # all optional; only provided fields are written
-    github_app_id: str | None = None; github_app_slug: str | None = None
-    github_webhook_secret: str | None = None; github_private_key_path: str | None = None
-    github_client_id: str | None = None; github_client_secret: str | None = None
-    gemini_api_key: str | None = None; gemini_model: str | None = Field(None, pattern=r"^[a-zA-Z0-9.\-]+$")
-```
-- **Masked values round-trip rule**: if a submitted secret starts with `••••`, treat it as "unchanged" and don't write it.
-- Path params `{owner}/{repo}` are validated against `^[A-Za-z0-9_.-]+$` and lowercased before use.
+Moved to [`API.md`](API.md) so there is one reference to keep current. It lists every route with its auth level,
+inputs and response, including the routes added after this plan (login, GitHub connect, documents, golden prompt,
+insights). The Pydantic models are in `backend/app/schemas/`.
 
 ---
 
@@ -958,9 +869,8 @@ Inputs: `accessible_repos: list[str]`, optional `repo` (must be in the list, els
 total_reviews = COUNT(*)
 avg_score     = ROUND(AVG(score), 1)
 pass_rate     = ROUND(100.0 * SUM(verdict='passed') / COUNT(*), 1)
+lines_reviewed = COALESCE(SUM(lines_reviewed), 0)   -- replaced helpful_rate (lines_kpi_20261008)
 verdict_counts= GROUP BY verdict
-helpful_rate  = ROUND(100.0 * SUM(f.rating='helpful') / COUNT(f.id), 1)
-                FROM review_feedback f JOIN pr_reviews r ON r.id = f.review_id  (same filter on r)
 recent        = latest 10 reviews (ORDER BY created_at DESC)
 trend         = GROUP BY date(created_at) → reviews count, avg score; fill missing days with 0/None
 ```
@@ -1042,8 +952,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return res.status === 204 ? (undefined as T) : res.json();
 }
 ```
-- One typed module per resource (`rules.ts`, `reviews.ts`, ...) mirroring §10.
-- `types/api.ts` mirrors §10.1 exactly (string-literal unions for enums).
+- One typed module per resource (`rules.ts`, `reviews.ts`, ...) mirroring [`API.md`](API.md).
+- `types/api.ts` mirrors the backend schemas in `backend/app/schemas/` exactly (string-literal unions for enums).
 
 ### 13.4 State
 - **TanStack Query** for all server state. Query keys: `["me"]`, `["installations"]`, `["rules"]`, `["rule", repo]`, `["reviews", filters]`, `["review", id]`, `["metrics", repo, days]`, `["events", filters]`, `["settings"]`, `["replies"]`, `["presets"]`, `["app"]`.
@@ -1052,15 +962,18 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 ### 13.5 Routing (`App.tsx`)
 ```
-/              Landing (public; if logged in, show "Go to dashboard")
+/              Landing (public; "Go to dashboard")
+/login         Login (public; username + password)
 /dashboard     ProtectedRoute → AppShell → Dashboard
 /rules         ProtectedRoute → AppShell → Rules
 /history       ProtectedRoute → AppShell → History        (?review=<id> opens drawer — deep-linkable)
+/insights      ProtectedRoute → AppShell → Insights
 /activity      ProtectedRoute → AppShell → Activity
 /settings      ProtectedRoute → AppShell → Settings
+/home          → redirect to /
 *              NotFound
 ```
-`ProtectedRoute`: while `me` is loading → full-page spinner. If there's no user → redirect `window.location = /api/v1/auth/login?next=<path>`.
+`ProtectedRoute`: while `me` is loading → full-page spinner. If there's no user → redirect to `/login?next=<path>`.
 
 ### 13.6 Layout
 - **Sidebar** (collapsible below `md`; hamburger in Navbar): logo, nav items with lucide icons (LayoutDashboard, SlidersHorizontal, History, Activity, Settings), and an active state with a violet left bar.
@@ -1073,20 +986,20 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 - Hero: H1 "Architectural review for every pull request". Subtext covering the value proposition (architecture-only focus, team rules in plain English, native GitHub workflow).
 - CTAs:
   - "Install GitHub App" → `install_url` from `GET /github/app`. Disabled with a tooltip if `configured=false`.
-  - "Sign in with GitHub" → `/api/v1/auth/login`.
+  - "Sign in" → `/login` *(changed from "Sign in with GitHub")*.
 - Three feature cards: Architectural-Only Focus, Team-Defined Rules, Native GitHub Workflow.
 - Comparison table **Traditional Linters vs ReviewPilot**. Rows: Style & formatting (✓ / ignored unless risky), Module boundaries & coupling (✗ / ✓), API contract breaks (✗ / ✓), Async lifecycle & failure modes (✗ / ✓), Team-specific rules in plain English (limited / ✓), Lives in PR conversation (partial / ✓).
 - A mock PR comment preview showing the banner format.
 - Show `?auth_error=` as a toast ("Sign-in failed, please try again").
 
 **Dashboard (`/dashboard`)**
-- If `installations` is empty → render the `OnboardingWizard` (§14) instead of metrics.
+- If `installations` is empty → render the Install GitHub App gate (`InstallAppGate`) instead of metrics *(changed from the `OnboardingWizard`, §14)*.
 - Otherwise:
   - 4 `MetricCard`s:
     - Total PRs Reviewed (`total_reviews`)
     - Avg Architecture Health (`8.7/10`, colored by range: ≥8 emerald, 5–7.9 amber, <5 rose)
     - Pass Rate (`88.2%`)
-    - Helpful Rate (`94%`)
+    - Lines reviewed (`12,480`) *(changed from Helpful Rate)*
     - `null` → "—" with "No data yet".
   - Period selector: 7 / 30 / 90 days (default 30).
   - Optional small trend sparkline (inline SVG from `/metrics/trend`; no chart lib needed).
@@ -1130,7 +1043,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 - Section **Gemini**: API key (masked), Model (text input with suggestions `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro`), and a "Validate key" button → shows ok/error.
 - Section **Canned replies**: four textareas (welcome, plan, error, empty_diff) with a placeholder legend (`{author}`, `{reason}`, `{app_name}`).
 - Non-admins see everything read-only, with a banner: "Only admins can change settings."
-- Secret inputs show the masked value. Typing replaces it. Leaving it untouched sends the masked value, which the backend ignores (§10.1).
+- Secret inputs show the masked value. Typing replaces it. Leaving it untouched sends the masked value, which the backend ignores (see `PUT /settings` in [`API.md`](API.md)).
 
 ### 13.8 Shared UI components (behavior details)
 - `VerdictBadge`: passed → emerald "Passed"; warning → amber "Warning"; critical → rose "Critical Risk".
@@ -1143,6 +1056,10 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 ---
 
 ## 14. Onboarding Flow (end-to-end)
+
+> **Superseded.** The wizard below was not kept. A signed-in user with no reachable repository sees an
+> **Install GitHub App** gate (also in the navbar, with "Already installed? Connect GitHub"); rules, presets and
+> trigger instructions live on the Rules page and the landing page.
 
 `OnboardingWizard` is a 4-step stepper. Progress persists in `localStorage` (`rp_onboarding_step`) and is skipped automatically once its conditions are met.
 
@@ -1280,7 +1197,7 @@ Tasks: `github_user.py`, `auth.py` routes, `deps.py`, `access.py`, `GET /github/
 
 ### Phase 5 — Data APIs
 Tasks: `rules.py`, `reviews.py` (+ feedback), `metrics.py` (service + routes), `GET /webhooks/events`, `settings.py` + `config_store.py`.
-**Accept:** all API test files pass. OpenAPI docs at `/docs` show every endpoint in §10.
+**Accept:** all API test files pass. OpenAPI docs at `/docs` show every endpoint in [`API.md`](API.md).
 
 ### Phase 6 — Frontend foundation
 Tasks: Vite + TS + Tailwind scaffold; tokens; client and types; AuthContext/WorkspaceContext; router; AppShell (Sidebar/Navbar); UI kit components; Landing page.

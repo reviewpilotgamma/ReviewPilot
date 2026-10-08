@@ -48,7 +48,8 @@ async def test_feedback_updates_counts_and_metrics(pipeline, login):
 
     empty = client.get("/api/v1/metrics/summary").json()
     assert empty["total_reviews"] == 2
-    assert empty["helpful_rate"] is None
+    reviewed = client.get("/api/v1/reviews").json()["items"]
+    assert empty["lines_reviewed"] == sum(i["lines_reviewed"] for i in reviewed) > 0
     assert empty["verdict_counts"] == {"passed": 1, "warning": 0, "critical": 1}
     assert empty["pass_rate"] == 50.0
     assert empty["avg_score"] == round((3.0 + 9.0) / 2, 1)
@@ -64,7 +65,6 @@ async def test_feedback_updates_counts_and_metrics(pipeline, login):
     assert len(client.get(f"/api/v1/reviews/{ids[40]}/feedback").json()) == 2
 
     summary = client.get("/api/v1/metrics/summary").json()
-    assert summary["helpful_rate"] == round(100 * 2 / 3, 1)
     assert {r["pr_number"] for r in summary["recent"]} == {40, 41}
 
     trend = client.get("/api/v1/metrics/trend", params={"days": 7}).json()

@@ -9,7 +9,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import utcnow
-from app.models import PRReview, ReviewFeedback
+from app.models import PRReview
 from app.schemas.metrics import MetricsSummary, TrendPoint
 from app.services.reviews import feedback_counts_for, to_list_item
 
@@ -29,18 +29,19 @@ def summary(db: Session, repos: Sequence[str], days: int) -> MetricsSummary:
             total_reviews=0,
             avg_score=None,
             pass_rate=None,
-            helpful_rate=None,
+            lines_reviewed=0,
             verdict_counts=empty_counts,
             recent=[],
         )
     since = utcnow() - timedelta(days=days)
     scope = (PRReview.repo_full_name.in_(repos), PRReview.created_at >= since)
 
-    total, avg_score, passed = db.execute(
+    total, avg_score, passed, lines_reviewed = db.execute(
         select(
             func.count(PRReview.id),
             func.avg(PRReview.score),
             func.sum(case((PRReview.verdict == "passed", 1), else_=0)),
+            func.coalesce(func.sum(PRReview.lines_reviewed), 0),
         ).where(*scope)
     ).one()
 
@@ -49,15 +50,6 @@ def summary(db: Session, repos: Sequence[str], days: int) -> MetricsSummary:
         select(PRReview.verdict, func.count(PRReview.id)).where(*scope).group_by(PRReview.verdict)
     ):
         verdict_counts[verdict] = count
-
-    feedback_total, helpful = db.execute(
-        select(
-            func.count(ReviewFeedback.id),
-            func.sum(case((ReviewFeedback.rating == "helpful", 1), else_=0)),
-        )
-        .join(PRReview, PRReview.id == ReviewFeedback.review_id)
-        .where(*scope)
-    ).one()
 
     recent_rows = db.scalars(
         select(PRReview).where(*scope).order_by(PRReview.created_at.desc()).limit(RECENT_LIMIT)
@@ -68,7 +60,7 @@ def summary(db: Session, repos: Sequence[str], days: int) -> MetricsSummary:
         total_reviews=total or 0,
         avg_score=round(avg_score, 1) if avg_score is not None else None,
         pass_rate=_pct(passed, total),
-        helpful_rate=_pct(helpful, feedback_total),
+        lines_reviewed=lines_reviewed,
         verdict_counts=verdict_counts,
         recent=[to_list_item(r, counts.get(r.id)) for r in recent_rows],
     )

@@ -1,0 +1,9 @@
+{
+  "track_id": "diff_batching_20261007",
+  "title": "Batch large PR diffs instead of cutting them",
+  "type": "feature",
+  "status": "in progress",
+  "created": "2026-10-07",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}

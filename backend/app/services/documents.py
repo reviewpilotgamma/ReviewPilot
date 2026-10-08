@@ -6,6 +6,7 @@ import hashlib
 import io
 import logging
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
@@ -146,6 +147,7 @@ async def save_document(
 
     text = extract_text(name, data)
     digest = hashlib.sha256(data).hexdigest()
+    hash_before = documents_content_hash(db, key)
 
     current = next((d for d in existing if d.filename == name), None)
     if current is None:
@@ -160,7 +162,8 @@ async def save_document(
     current.uploaded_by_user_id = user_id
     db.commit()
     db.refresh(current)
-    await invalidate_context_cache(db, key)
+    if documents_content_hash(db, key) != hash_before:
+        await invalidate_context_cache(db, key)
     return current
 
 
@@ -183,55 +186,97 @@ def _parse_expire_time(raw: str | None) -> datetime | None:
         return None
 
 
-async def ensure_context_cache(db: Session, repo_full_name: str) -> tuple[str | None, str]:
-    """Return (cached_content_name_or_none, documents_text_for_inline_fallback)."""
-    key = repo_full_name.lower()
-    docs_text = assemble_documents_text(db, key)
-    if not docs_text:
-        return None, ""
+@dataclass(frozen=True)
+class CacheState:
+    """Context-cache status for a repository: ``none | inline | cached | pending``."""
 
-    content_hash = hashlib.sha256(docs_text.encode("utf-8")).hexdigest()
-    settings = get_settings()
-    model = settings.GEMINI_MODEL
-    now = datetime.now(UTC)
+    status: str
+    error: str | None = None
 
-    row = db.get(RepoContextCache, key)
-    if (
+
+MAX_CACHE_ERROR_CHARS = 200
+
+
+def _row_is_current(row: RepoContextCache | None, content_hash: str, model: str) -> bool:
+    return (
         row is not None
         and row.content_hash == content_hash
         and row.model == model
-        and (row.expires_at is None or row.expires_at > now + timedelta(minutes=5))
-    ):
-        return row.cache_name, docs_text
+        and (row.expires_at is None or row.expires_at > datetime.now(UTC) + timedelta(minutes=5))
+    )
+
+
+def cache_state(db: Session, repo_full_name: str) -> CacheState:
+    """Current status without calling Gemini."""
+    key = repo_full_name.lower()
+    docs_text = assemble_documents_text(db, key)
+    if not docs_text:
+        return CacheState("none")
+    if len(docs_text) < MIN_CACHE_CHARS:
+        return CacheState("inline")
+    content_hash = hashlib.sha256(docs_text.encode("utf-8")).hexdigest()
+    row = db.get(RepoContextCache, key)
+    return CacheState("cached" if _row_is_current(row, content_hash, get_settings().GEMINI_MODEL) else "pending")
+
+
+async def _build_cache(db: Session, key: str, docs_text: str, content_hash: str) -> str:
+    """Create the Gemini cache and store its handle. Raises Gemini errors."""
+    settings = get_settings()
+    created = await gemini.create_cached_content(
+        display_name=f"reviewpilot-{key.replace('/', '-')}"[:40],
+        documents_text=docs_text,
+        ttl=f"{settings.GEMINI_CACHE_TTL_SECONDS}s",
+    )
+    db.merge(
+        RepoContextCache(
+            repo_full_name=key,
+            cache_name=created.name,
+            content_hash=content_hash,
+            model=settings.GEMINI_MODEL,
+            expires_at=_parse_expire_time(created.expire_time),
+            updated_at=utcnow(),
+        )
+    )
+    db.commit()
+    return created.name
+
+
+async def _resolve_cache(db: Session, repo_full_name: str) -> tuple[str | None, str, CacheState]:
+    """Reuse or build the repo's cache. Returns (cache name, documents text, state); never raises Gemini errors."""
+    key = repo_full_name.lower()
+    docs_text = assemble_documents_text(db, key)
+    if not docs_text:
+        return None, "", CacheState("none")
+
+    content_hash = hashlib.sha256(docs_text.encode("utf-8")).hexdigest()
+    row = db.get(RepoContextCache, key)
+    if _row_is_current(row, content_hash, get_settings().GEMINI_MODEL):
+        return row.cache_name, docs_text, CacheState("cached")
 
     if row is not None:
         await invalidate_context_cache(db, key)
 
     if len(docs_text) < MIN_CACHE_CHARS:
         logger.info("Docs for %s below cache size gate (%s chars); using inline injection", key, len(docs_text))
-        return None, docs_text
+        return None, docs_text, CacheState("inline")
 
-    ttl = f"{settings.GEMINI_CACHE_TTL_SECONDS}s"
     try:
-        created = await gemini.create_cached_content(
-            display_name=f"reviewpilot-{key.replace('/', '-')}"[:40],
-            documents_text=docs_text,
-            ttl=ttl,
-        )
+        name = await _build_cache(db, key, docs_text, content_hash)
     except GeminiNotConfigured:
-        return None, docs_text
+        return None, docs_text, CacheState("pending", "Gemini is not configured")
     except (GeminiPermanentError, GeminiTransientError) as exc:
         logger.warning("Gemini cache create failed for %s (%s); falling back to inline docs", key, exc)
-        return None, docs_text
+        return None, docs_text, CacheState("pending", str(exc)[:MAX_CACHE_ERROR_CHARS])
+    return name, docs_text, CacheState("cached")
 
-    cache = RepoContextCache(
-        repo_full_name=key,
-        cache_name=created.name,
-        content_hash=content_hash,
-        model=model,
-        expires_at=_parse_expire_time(created.expire_time),
-        updated_at=utcnow(),
-    )
-    db.merge(cache)
-    db.commit()
-    return created.name, docs_text
+
+async def ensure_context_cache(db: Session, repo_full_name: str) -> tuple[str | None, str]:
+    """Return (cached_content_name_or_none, documents_text_for_inline_fallback)."""
+    name, docs_text, _ = await _resolve_cache(db, repo_full_name)
+    return name, docs_text
+
+
+async def warm_context_cache(db: Session, repo_full_name: str) -> CacheState:
+    """Build the cache now (used right after uploads/deletes) and report the outcome."""
+    _, _, state = await _resolve_cache(db, repo_full_name)
+    return state

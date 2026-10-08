@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { FileWarning, History } from "lucide-react";
 import type { ReactNode } from "react";
 import { VERDICT_LABEL } from "@/lib/format";
 import type { EventStatus, JobStatus, Verdict } from "@/types/api";
@@ -33,6 +34,18 @@ export function VerdictBadge({ verdict }: { verdict: Verdict }) {
   return <Badge tone={VERDICT_TONES[verdict]}>{VERDICT_LABEL[verdict]}</Badge>;
 }
 
+/** Shown when part of a PR's diff was not reviewed (cut, failed batch, or time limit). */
+export function PartialBadge() {
+  return (
+    <span title="Part of this PR's diff was not reviewed. The review lists the files.">
+      <Badge tone="amber">
+        <FileWarning className="h-3 w-3" aria-hidden />
+        Partially reviewed
+      </Badge>
+    </span>
+  );
+}
+
 const STATUS_TONES: Record<EventStatus | JobStatus, Tone> = {
   queued: "violet",
   running: "violet",
@@ -41,6 +54,18 @@ const STATUS_TONES: Record<EventStatus | JobStatus, Tone> = {
   ignored: "gray",
   failed: "rose",
 };
+
+/** Shown on a review that follows up an earlier review of the same PR. */
+export function FollowUpBadge() {
+  return (
+    <span title="Compares the updated PR with the previous review: fixed, still open and new findings.">
+      <Badge tone="violet">
+        <History className="h-3 w-3" aria-hidden />
+        Follow-up
+      </Badge>
+    </span>
+  );
+}
 
 export function StatusBadge({ status }: { status: EventStatus | JobStatus }) {
   return (

@@ -1,12 +1,14 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MarkdownView } from "@/components/diff/MarkdownView";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { FeedbackWidget } from "@/components/reviews/FeedbackWidget";
+import { ReviewedWith } from "@/components/reviews/ReviewedWith";
 import { StatusBadge, VerdictBadge } from "@/components/ui/Badge";
 import { MetricCard } from "@/components/ui/MetricCard";
+import { Dialog, Modal } from "@/components/ui/Overlay";
 import { mockFetch, renderWithProviders } from "@/test/utils";
 
 describe("MarkdownView", () => {
@@ -59,7 +61,7 @@ describe("ProtectedRoute", () => {
   it("redirects anonymous users to login with the current path", async () => {
     const { auth } = renderWithProviders(<ProtectedRoute />, { user: null, path: "/rules?repo=a" });
     await waitFor(() => expect(auth.login).toHaveBeenCalledWith("/rules?repo=a"));
-    expect(screen.getByText(/Redirecting to GitHub/)).toBeInTheDocument();
+    expect(screen.getByText(/Redirecting to sign in/)).toBeInTheDocument();
   });
 });
 
@@ -71,6 +73,7 @@ describe("Sidebar", () => {
       "Dashboard",
       "Rules",
       "Review History",
+      "Insights",
       "Activity",
       "Settings",
     ]);
@@ -110,5 +113,73 @@ describe("FeedbackWidget", () => {
     );
     expect(screen.getByRole("button", { name: /No/ })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: /Yes/ })).toHaveAttribute("aria-pressed", "false");
+  });
+});
+
+describe("ReviewedWith", () => {
+  it("summarises a custom prompt, instructions and cached documents without emojis", () => {
+    const { container } = render(
+      <ReviewedWith
+        context={{
+          prompt: "custom",
+          prompt_updated_at: "2026-10-07T10:00:00Z",
+          instructions_chars: 120,
+          verbosity: "detailed",
+          security: true,
+          documents: ["arch.md", "reqs.pdf"],
+          documents_mode: "cached",
+          requester_note: false,
+        }}
+      />,
+    );
+    const line = screen.getByLabelText("Reviewed with");
+    expect(line).toHaveTextContent("Golden prompt (edited Oct 7)");
+    expect(line).toHaveTextContent("Instructions (Detailed · Security on)");
+    expect(line).toHaveTextContent("2 documents (cached)");
+    expect(container.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
+  });
+
+  it("omits documents when none were used and renders nothing without context", () => {
+    const { rerender } = render(
+      <ReviewedWith
+        context={{
+          prompt: "default",
+          prompt_updated_at: null,
+          instructions_chars: 0,
+          verbosity: "concise",
+          security: false,
+          documents: [],
+          documents_mode: "none",
+          requester_note: false,
+        }}
+      />,
+    );
+    const line = screen.getByLabelText("Reviewed with");
+    expect(line).toHaveTextContent("No instructions (Concise · Security off)");
+    expect(line).not.toHaveTextContent("document");
+    rerender(<ReviewedWith context={null} />);
+    expect(screen.queryByLabelText("Reviewed with")).toBeNull();
+  });
+});
+
+describe("Dialog", () => {
+  it("closes only the topmost dialog on Escape", async () => {
+    const closeDialog = vi.fn();
+    const closeConfirm = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <>
+        <Dialog open onClose={closeDialog} title="Edit things" description="Details" footer={<button>Done</button>}>
+          Body
+        </Dialog>
+        <Modal open onClose={closeConfirm} title="Discard?" actions={<button>Discard</button>}>
+          Sure?
+        </Modal>
+      </>,
+    );
+    expect(screen.getByRole("dialog", { name: "Edit things" })).toHaveTextContent("Details");
+    await user.keyboard("{Escape}");
+    expect(closeConfirm).toHaveBeenCalledTimes(1);
+    expect(closeDialog).not.toHaveBeenCalled();
   });
 });

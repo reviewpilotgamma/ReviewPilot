@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { mockFetch } from "@/test/utils";
-import { api, ApiError, buildQuery, http, loginUrl, onUnauthorized } from "./client";
+import { api, ApiError, buildQuery, githubConnectUrl, http, onUnauthorized } from "./client";
 
 describe("api client", () => {
   it("sends credentials and the CSRF header", async () => {
@@ -44,6 +44,18 @@ describe("api client", () => {
     expect((error as ApiError).message).toBe("Review not found");
   });
 
+  it("exposes structured validation reasons", async () => {
+    mockFetch({
+      "PUT /api/v1/prompt": new Response(JSON.stringify({ detail: { errors: ["Missing slot.", "Bad token."] } }), {
+        status: 422,
+      }),
+    });
+    const error = await http.put("/prompt", { template: "x" }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).details).toEqual(["Missing slot.", "Bad token."]);
+    expect((error as ApiError).message).toBe("Missing slot. Bad token.");
+  });
+
   it("returns undefined for 204", async () => {
     mockFetch({ "DELETE /api/v1/rules/a/b": () => new Response(null, { status: 204 }) });
     await expect(http.delete("/rules/a/b")).resolves.toBeUndefined();
@@ -52,6 +64,7 @@ describe("api client", () => {
   it("builds query strings without empty values", () => {
     expect(buildQuery({ a: "1", b: undefined, c: "", d: 0, e: null })).toBe("?a=1&d=0");
     expect(buildQuery({})).toBe("");
-    expect(loginUrl("/rules?x=1")).toBe("/api/v1/auth/login?next=%2Frules%3Fx%3D1");
+    expect(githubConnectUrl()).toBe("/api/v1/auth/github/connect?mode=install");
+    expect(githubConnectUrl("authorize")).toBe("/api/v1/auth/github/connect?mode=authorize");
   });
 });

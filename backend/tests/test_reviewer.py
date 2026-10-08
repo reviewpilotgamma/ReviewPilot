@@ -109,9 +109,10 @@ async def test_happy_path_persists_and_posts(github, db):
     assert "key=" not in str(gemini_route.calls[0].request.url)
 
     body = json.loads(comment_route.calls[0].request.content)["body"]
-    assert body.startswith("## ✈️ ReviewPilot Architectural Audit")
+    assert body.startswith("## ReviewPilot Architectural Audit")
     assert body.rstrip().endswith("_Triggered via ReviewPilot · Architecture Gatekeeper_")
     assert "🔴 Critical Risk" in body and "3.5/10" in body
+    assert "**Verdict:** 🔴 Critical Risk&emsp;·&emsp;**Health score:** 3.5/10&emsp;·&emsp;**Lines reviewed:**" in body
     assert "_Requested by @alice: “focus on auth boundaries”_" in body
     assert "reviewpilot-meta" not in body
 
@@ -246,3 +247,40 @@ async def test_failure_comment_uses_safe_reason(mock_http, db):
     await reviewer.post_failure_comment(make_job(db), GeminiPermanentError("Gemini 400: secret detail"))
     body = json.loads(comment.calls[0].request.content)["body"]
     assert "(AI model unavailable)" in body and "secret detail" not in body
+
+
+def test_build_review_context_records_sources_not_content():
+    from datetime import UTC, datetime
+
+    from app.services.golden_prompt import EffectivePrompt
+    from app.services.prompts import RuleSettings
+
+    custom = EffectivePrompt("t", is_default=False, updated_at=datetime(2026, 10, 7, tzinfo=UTC), updated_by="admin")
+    rules = RuleSettings(custom_instructions="  Strict idempotency.  ", verbosity="detailed", enable_security=False)
+
+    context = reviewer.build_review_context(
+        custom, rules, cached=None, inline_docs="SECRET DOC BODY", filenames=["a.md", "b.pdf"], requester_note="x"
+    )
+
+    assert context == {
+        "prompt": "custom",
+        "prompt_updated_at": "2026-10-07T00:00:00+00:00",
+        "instructions_chars": len("Strict idempotency."),
+        "verbosity": "detailed",
+        "security": False,
+        "documents": ["a.md", "b.pdf"],
+        "documents_mode": "inline",
+        "requester_note": True,
+    }
+    assert "SECRET DOC BODY" not in json.dumps(context)
+
+    default = EffectivePrompt("t", is_default=True)
+    bare = reviewer.build_review_context(
+        default, RuleSettings(), cached=None, inline_docs=None, filenames=[], requester_note=None
+    )
+    assert (bare["prompt"], bare["documents_mode"], bare["documents"], bare["prompt_updated_at"]) == (
+        "default",
+        "none",
+        [],
+        None,
+    )

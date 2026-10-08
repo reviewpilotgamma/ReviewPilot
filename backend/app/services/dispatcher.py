@@ -24,6 +24,7 @@ PLAN_RE = re.compile(r"(?<![\w@])@bot\s+plan\b", re.IGNORECASE)
 MAX_NOTE_CHARS = 500
 MAX_PREVIEW_CHARS = 2_000
 INSTALLATION_EVENTS = {"installation", "installation_repositories"}
+BOT_SENDER_REASON = "bot sender"
 
 
 @dataclass
@@ -70,6 +71,19 @@ def _repo_parts(payload: dict[str, Any]) -> tuple[str, str] | None:
     return owner, repo
 
 
+def _review_queued(db: Session, owner: str, repo: str, pr_number: Any) -> bool:
+    """True when a review job for this PR is waiting to run (not yet claimed by the worker)."""
+    target = (owner.lower(), repo.lower(), pr_number)
+    for raw in db.scalars(select(Job.payload).where(Job.kind == "review", Job.status == "queued")):
+        try:
+            data = json.loads(raw)
+        except ValueError:
+            continue
+        if (str(data.get("owner", "")).lower(), str(data.get("repo", "")).lower(), data.get("pr_number")) == target:
+            return True
+    return False
+
+
 def plan_jobs(db: Session, event: str, payload: dict[str, Any]) -> DispatchResult:
     action = payload.get("action")
 
@@ -95,6 +109,25 @@ def plan_jobs(db: Session, event: str, payload: dict[str, Any]) -> DispatchResul
         if rules.review_mode == "auto":
             return DispatchResult(jobs=[JobSpec("review", {**base, "trigger": "auto", "requester": None})])
         return DispatchResult(jobs=[JobSpec("welcome", base)])
+
+    if event == "pull_request" and action == "synchronize":
+        if parts is None or installation_id is None:
+            return DispatchResult(ignore_reason="missing repository or installation")
+        owner, repo = parts
+        pr = payload.get("pull_request") or {}
+        if load_rule_settings(db, f"{owner}/{repo}").review_mode != "auto":
+            return DispatchResult(ignore_reason="on-demand mode")
+        if _review_queued(db, owner, repo, pr.get("number")):
+            # A burst of pushes gets one follow-up: the queued job reads the newest head when it runs.
+            return DispatchResult(ignore_reason="review already queued")
+        base = {
+            "installation_id": installation_id,
+            "owner": owner,
+            "repo": repo,
+            "pr_number": pr.get("number"),
+            "author": (pr.get("user") or {}).get("login", ""),
+        }
+        return DispatchResult(jobs=[JobSpec("review", {**base, "trigger": "push", "requester": None})])
 
     if event == "issue_comment" and action == "created":
         issue = payload.get("issue") or {}
@@ -179,7 +212,7 @@ def ingest(db: Session, *, event: str, delivery_id: str | None, payload: dict[st
     if event == "ping":
         record.status = "processed"
     elif is_bot_event(payload):
-        record.error_message = "bot sender"
+        record.error_message = BOT_SENDER_REASON
     else:
         result = plan_jobs(db, event, payload)
         if result.jobs:

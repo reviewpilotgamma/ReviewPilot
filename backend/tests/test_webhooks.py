@@ -99,3 +99,68 @@ def test_events_endpoint_is_tenant_scoped(client, db, login):
 
 def test_events_require_auth(client):
     assert client.get("/api/v1/webhooks/events").status_code == 401
+
+
+def test_events_hide_bot_sender_by_default(client, db, login):
+    post_webhook(client, "pull_request", load_fixture("pull_request_opened.json"), delivery="pr")
+    bot = load_fixture("issue_comment_review.json")
+    bot["sender"] = {"login": "reviewpilot[bot]", "type": "Bot"}
+    post_webhook(client, "issue_comment", bot, delivery="bot")
+    human = load_fixture("issue_comment_review.json")
+    human["comment"]["body"] = "lgtm"
+    post_webhook(client, "issue_comment", human, delivery="human")
+
+    login(repos=("acme/api",))
+    default = client.get("/api/v1/webhooks/events").json()
+    assert [e["delivery_id"] for e in default] == ["human", "pr"]
+    assert default[0]["error_message"] == "no trigger"
+    assert default[1]["error_message"] is None
+
+    everything = client.get("/api/v1/webhooks/events", params={"include_bot": "true"}).json()
+    assert [e["delivery_id"] for e in everything] == ["human", "bot", "pr"]
+
+    ignored = client.get("/api/v1/webhooks/events", params={"status": "ignored"}).json()
+    assert [e["delivery_id"] for e in ignored] == ["human"]
+
+
+def test_non_object_json_rejected(client, db):
+    response = post_webhook(client, "ping", [1, 2, 3])  # type: ignore[arg-type]
+    assert response.status_code == 400
+    assert db.query(WebhookEvent).count() == 0
+
+
+def test_installation_events_refresh_repository_access(client, monkeypatch):
+    from app.api import webhooks
+
+    cleared = []
+    monkeypatch.setattr(webhooks.access, "clear_cache", lambda: cleared.append(True))
+    response = post_webhook(client, "installation", {"action": "created", "installation": {"id": 99}})
+    assert response.json() == {"status": "ok", "jobs": 0}
+    assert cleared == [True]
+
+
+def test_events_filter_by_repo_and_page_with_before_id(client, db, login):
+    for delivery in ("one", "two", "three"):
+        post_webhook(client, "pull_request", load_fixture("pull_request_opened.json"), delivery=delivery)
+
+    login(repos=("acme/api", "acme/web"))
+    scoped = client.get("/api/v1/webhooks/events", params={"repo": "ACME/API"}).json()
+    assert [e["delivery_id"] for e in scoped] == ["three", "two", "one"]
+
+    older = client.get("/api/v1/webhooks/events", params={"before_id": scoped[0]["id"], "limit": 1}).json()
+    assert [e["delivery_id"] for e in older] == ["two"]
+
+
+def test_admins_also_see_events_without_a_repository(client, db, login):
+    post_webhook(client, "ping", {"zen": "hi"}, delivery="ping")
+    post_webhook(client, "pull_request", load_fixture("pull_request_opened.json"), delivery="pr")
+
+    login("alice", repos=("acme/api",))
+    assert [e["delivery_id"] for e in client.get("/api/v1/webhooks/events").json()] == ["pr"]
+
+    login("admin-user", repos=("acme/api",), github_id=2002)
+    assert [e["delivery_id"] for e in client.get("/api/v1/webhooks/events").json()] == ["pr", "ping"]
+    # An explicit repo filter still excludes repository-less events.
+    assert [e["delivery_id"] for e in client.get("/api/v1/webhooks/events", params={"repo": "acme/api"}).json()] == [
+        "pr"
+    ]

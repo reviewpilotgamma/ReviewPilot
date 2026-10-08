@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.services.review_parser import extract_summary, parse_review
+from app.services.review_parser import extract_summary, findings_excerpt, parse_review
 from tests.conftest import FIXTURES
 
 SAMPLE = (FIXTURES / "gemini_review.md").read_text(encoding="utf-8")
@@ -11,7 +11,16 @@ def test_meta_parsed_and_stripped():
     assert parsed.meta_found
     assert parsed.verdict == "critical" and parsed.score == 3.5
     assert "reviewpilot-meta" not in parsed.body
-    assert parsed.summary.startswith("This PR adds naive retries")
+    assert parsed.summary.startswith("- **What it does:** Adds naive retries")
+
+
+def test_structured_findings_counted():
+    parsed = parse_review(SAMPLE.replace('<!-- reviewpilot-meta: {"score": 3.5, "verdict": "critical"} -->', ""))
+    assert not parsed.meta_found
+    assert parsed.verdict == "critical"
+    excerpt = findings_excerpt(SAMPLE)
+    assert excerpt.startswith("- **Critical** · **Non-idempotent retries**")
+    assert "**File(s):** `app/payments.py`" in excerpt
 
 
 def test_score_clamped_and_rounded():
@@ -66,3 +75,19 @@ def test_summary_without_heading_uses_first_paragraph():
 def test_summary_truncated():
     md = "### Executive Summary\n" + "x" * 5000 + "\n### Next"
     assert len(extract_summary(md)) == 1000
+
+
+def test_findings_excerpt_uses_section_and_truncates():
+    md = "### Executive Summary\nIgnore me\n### Architectural Findings\n- **Warning** a\n### Recommendations\nfix it"
+    assert findings_excerpt(md) == "- **Warning** a"
+    long = "### Architectural Findings\n" + ("line\n" * 400)
+    excerpt = findings_excerpt(long, max_chars=40)
+    assert len(excerpt) <= 42 and excerpt.endswith("…")
+
+
+def test_scope_check_does_not_affect_severity_counts():
+    md = SAMPLE.replace('<!-- reviewpilot-meta: {"score": 3.5, "verdict": "critical"} -->', "")
+    md = md.replace("- **Critical** ·", "- **Passed** ·")
+    md = md.replace("- **Warning** ·", "- **Passed** ·")
+    md = md.replace("- **Matches description:** Partly", "- **Matches description:** Partly **Critical** **Warning**")
+    assert parse_review(md).verdict == "passed"

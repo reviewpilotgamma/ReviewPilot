@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Activity, History, LayoutDashboard, Settings, SlidersHorizontal } from "lucide-react";
+import { Activity, History, LayoutDashboard, ScanSearch, Settings, SlidersHorizontal } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Brand } from "./Brand";
 
@@ -7,6 +7,7 @@ export const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/rules", label: "Rules", icon: SlidersHorizontal },
   { to: "/history", label: "Review History", icon: History },
+  { to: "/insights", label: "Insights", icon: ScanSearch },
   { to: "/activity", label: "Activity", icon: Activity },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;

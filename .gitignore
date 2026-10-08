@@ -18,6 +18,7 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+coverage/
 backend/e2e-reports/
 
 # Node
@@ -30,3 +31,7 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local environments
+venv/
+.env.local

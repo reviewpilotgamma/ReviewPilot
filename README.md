@@ -9,13 +9,15 @@ backend/   FastAPI · SQLAlchemy 2 (SQLite, WAL) · Alembic · Pydantic v2 · ht
 frontend/  React 18 · Vite · TypeScript · TanStack Query · Tailwind CSS
 ```
 
-See [`implementation.md`](implementation.md) for the full design. The source brief is [`Application-Prompt.md`](Application-Prompt.md).
+Design documents live in [`artifacts/`](artifacts/README.md): [`ARCHITECTURE.md`](artifacts/ARCHITECTURE.md) (the system today),
+[`REQUIREMENTS.md`](artifacts/REQUIREMENTS.md) and [`API.md`](artifacts/API.md).
 
 ## How it works
 
-1. GitHub delivers a webhook. The backend verifies `X-Hub-Signature-256` over the raw body, drops bot events,
+1. GitHub delivers a webhook. The backend verifies `X-Hub-Signature-256` over the raw body, ignores bot events,
    dedupes by `X-GitHub-Delivery`, and stores the event plus its **jobs** in SQLite in a single transaction. It
-   responds `200` immediately.
+   responds `200` immediately. Bot events (ReviewPilot's own PR comments echoed back) are hidden from the
+   Activity log unless **Show bot events** is ticked.
 2. An in-process, DB-backed **worker** claims jobs atomically. It retries transient failures (30 s / 2 min / 10 min,
    honoring `retry-after`), re-queues jobs interrupted by a restart, and never runs two reviews of the same PR at once.
 3. A **review** job fetches PR metadata and the unified diff, truncates the diff at 120 000 chars, and injects the
@@ -30,6 +32,8 @@ See [`implementation.md`](implementation.md) for the full design. The source bri
 | PR opened, repo in `auto` mode | Full architectural review |
 | PR opened, repo in `on_demand` mode | Welcome comment explaining `@review` |
 | Comment `@review [focus note]` | Review with the note injected (any mode) |
+| New commits pushed, repo in `auto` mode | Follow-up review posted as a new comment: what was fixed, what is still open, what is new |
+| Comment `@review` after new commits | Follow-up review (any mode); with no new commits since the last review, a full review |
 | Comment `@bot plan` | Pre-merge execution checklist (canned fallback if the model is unavailable) |
 
 ## 1. Register the GitHub App
@@ -46,6 +50,9 @@ GitHub → Settings → Developer settings → GitHub Apps → **New GitHub App*
   - Metadata: *Read-only*
 - **Subscribe to events**: *Pull request*, *Issue comment*.
 - **Callback URL** (Identifying and authorizing users): `{API_BASE_URL}/api/v1/auth/callback`.
+- Turn on **Request user authorization (OAuth) during installation**. Installing the App from ReviewPilot's
+  navbar then links the signed-in user's GitHub account in one step. Without it, ReviewPilot runs a separate
+  authorize step after the install.
 - Generate a **private key** and save it as `backend/secrets/reviewpilot.private-key.pem`.
 - Copy the App ID, slug, Client ID and Client secret into `backend/.env`.
 
@@ -79,7 +86,50 @@ python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().de
 ```
 
 In development, these fall back to ephemeral values, so sessions reset when the server restarts.
-`ADMIN_GITHUB_LOGINS` (comma-separated) controls who can edit Settings.
+
+### Sharing the database offline
+
+To copy the SQLite database for someone else (safe while the server runs, because the database uses WAL mode):
+
+```bash
+cd backend
+sqlite3 reviewpilot.db ".backup reviewpilot-share.db"
+```
+
+To use a shared copy, stop the backend first, then from the repository root:
+
+```bash
+rm -f backend/reviewpilot.db-wal backend/reviewpilot.db-shm
+cp /path/to/reviewpilot-share.db backend/reviewpilot.db
+```
+
+The copy holds password hashes and encrypted GitHub tokens, so share it only with people you trust. The tokens
+decrypt only with the same `TOKEN_ENCRYPTION_KEY`; otherwise users reconnect GitHub.
+
+### Signing in
+
+Users sign in at `/login` with one of two accounts that are seeded on startup from `backend/.env`:
+
+| Role | Settings | Development default |
+| --- | --- | --- |
+| `dev` | `SEED_DEV_USERNAME` / `SEED_DEV_PASSWORD` | `dev` / `dev12345` |
+| `admin` | `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` | `admin` / `admin12345` |
+
+Only `admin` can edit Settings and the golden prompt. `admin` also sees every repository the GitHub App is
+installed on, using the App's own credentials, so no GitHub account needs to be connected. In production, set both passwords. An account without
+a password is not created, and changing a password in `.env` takes effect on the next restart.
+
+After the first sign-in the dashboard asks the user to **Install GitHub App** (also in the navbar). The install
+links that user's GitHub account, and from then on they see the repositories their GitHub account can reach
+through the App. If the App is already installed, use **Already installed? Connect GitHub**.
+
+An admin can also grant a user repositories the App is already installed on, without that user connecting
+GitHub:
+
+```bash
+cd backend
+python -m scripts.grant_repo dev reviewpilotgamma/reviewpilot   # add --revoke to remove, --list to show
+```
 
 > Settings saved from the UI are written to `backend/.env`. Real environment variables take precedence over
 > `.env`, so don't also set those keys in the process environment if you want to manage them from the UI.
@@ -88,13 +138,19 @@ In development, these fall back to ephemeral values, so sessions reset when the 
 
 ```bash
 cd backend
-pytest -q --cov=app                  # ~250 tests incl. E2E, ~94 % coverage
+pytest -q                            # ~450 tests incl. E2E
+pytest -q --cov                      # same, plus coverage; fails below 95 % (currently ~98 %)
 ruff check . && ruff format --check .
 
 cd frontend
 npm test                             # Vitest + Testing Library
+npm run coverage                     # same, plus coverage; fails below 95 % lines/statements (currently ~98 %)
 npm run typecheck && npm run lint && npm run build
 ```
+
+Both sides enforce a 95 % line-coverage floor: `fail_under` in `backend/pyproject.toml` and the Vitest
+`coverage.thresholds` in `frontend/vite.config.ts`. The HTML reports land in `backend/htmlcov/` (with
+`--cov-report=html`) and `frontend/coverage/`.
 
 ### End-to-end pipeline suite
 

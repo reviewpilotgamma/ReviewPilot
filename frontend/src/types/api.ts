@@ -14,12 +14,17 @@ export interface Page<T> {
   page_size: number;
 }
 
+export type Role = "dev" | "admin";
+
 export interface User {
   id: number;
-  github_id: number;
   username: string;
+  role: Role;
   avatar_url: string | null;
   email: string | null;
+  github_id: number | null;
+  github_login: string | null;
+  github_linked: boolean;
   is_admin: boolean;
 }
 
@@ -29,7 +34,6 @@ export interface AppInfo {
   name: string;
   install_url: string;
   html_url: string;
-  local_mode: boolean;
 }
 
 export interface Repo {
@@ -78,10 +82,18 @@ export interface RepoDocument {
   uploaded_at: string;
 }
 
+/** `pending`: large enough to cache, but no Gemini cache exists yet (built on upload or the next review). */
+export type CacheStatus = "none" | "inline" | "cached" | "pending";
+
+export interface RepoDocumentUpload extends RepoDocument {
+  cache_status: CacheStatus;
+  cache_error: string | null;
+}
+
 export interface RepoDocumentList {
   items: RepoDocument[];
   total: number;
-  cache_status: "none" | "inline" | "cached";
+  cache_status: CacheStatus;
 }
 
 export interface Feedback {
@@ -111,15 +123,53 @@ export interface ReviewListItem {
   created_at: string;
   trigger: string;
   pr_url: string;
+  /** True when part of the diff was not reviewed (cut, failed batch, or time limit). */
+  diff_truncated: boolean;
+  /** Head commit the review saw (null for older reviews). */
+  head_sha?: string | null;
+  /** The review this one follows up, when the PR changed since an earlier posted review. */
+  previous_review_id?: number | null;
   feedback_counts: FeedbackCounts;
+}
+
+/** What a review was reviewed with. Older reviews have none. */
+export interface ReviewContext {
+  prompt: "default" | "custom";
+  prompt_updated_at: string | null;
+  instructions_chars: number;
+  verbosity: Verbosity;
+  security: boolean;
+  documents: string[];
+  documents_mode: "cached" | "inline" | "none";
+  requester_note: boolean;
 }
 
 export interface ReviewDetail extends ReviewListItem {
   full_markdown: string;
   requester: string | null;
-  diff_truncated: boolean;
   model: string;
+  review_context: ReviewContext | null;
   my_feedback: Feedback | null;
+}
+
+export type PromptSlotName = "custom_instructions" | "verbosity_directive" | "security_directive" | "requester_note";
+
+export type PromptSegment = { type: "text"; text: string } | { type: "slot"; name: PromptSlotName };
+
+/** The org-wide golden review prompt and the strings needed to assemble it client-side. */
+export interface PromptTemplate {
+  template: string;
+  is_default: boolean;
+  updated_at: string | null;
+  updated_by: string | null;
+  segments: PromptSegment[];
+  slots: { name: PromptSlotName; label: string; required: boolean }[];
+  directives: {
+    verbosity: Record<Verbosity, string>;
+    security: { enabled: string; disabled: string };
+  };
+  placeholders: { no_instructions: string; no_note: string };
+  warnings: string[];
 }
 
 export interface ReviewFilters {
@@ -135,7 +185,7 @@ export interface MetricsSummary {
   total_reviews: number;
   avg_score: number | null;
   pass_rate: number | null;
-  helpful_rate: number | null;
+  lines_reviewed: number;
   verdict_counts: Record<Verdict, number>;
   recent: ReviewListItem[];
 }
@@ -146,6 +196,41 @@ export interface TrendPoint {
   avg_score: number | null;
 }
 
+export interface InsightTheme {
+  title: string;
+  severity: Verdict;
+  count: number;
+  last_seen_review_id: number;
+  example_review_ids: number[];
+  evidence: string;
+}
+
+export interface InsightSnapshot {
+  id: number;
+  repo_full_name: string;
+  through_review_id: number;
+  included_count: number;
+  pending_analyzed_count: number;
+  summary_markdown: string;
+  themes: InsightTheme[];
+  new_this_period: string[];
+  still_showing: string[];
+  model: string;
+  created_at: string;
+  created_by: string;
+}
+
+export interface InsightState {
+  repo_full_name: string;
+  snapshot: InsightSnapshot | null;
+  total_reviews: number;
+  pending_count: number;
+  pending_capped: boolean;
+  ran_model: boolean;
+}
+
+export type JobErrorCode = "diff_too_large";
+
 export interface Job {
   id: number;
   kind: "review" | "welcome" | "plan";
@@ -153,6 +238,8 @@ export interface Job {
   attempts: number;
   max_attempts: number;
   last_error: string | null;
+  /** Stable code for errors the UI explains. */
+  error_code: JobErrorCode | null;
   review_id: number | null;
   next_run_at: string;
   updated_at: string;
@@ -177,6 +264,7 @@ export interface EventFilters {
   repo?: string;
   limit?: number;
   before_id?: number;
+  include_bot?: boolean;
 }
 
 export interface Settings {

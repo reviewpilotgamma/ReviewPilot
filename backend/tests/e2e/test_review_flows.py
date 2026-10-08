@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 
 from app.core.config import reload_settings
-from app.services.prompts import SECURITY_DISABLED_DIRECTIVE, VERBOSITY_DIRECTIVES
+from app.services.prompts import FOLLOWUP_DIRECTIVE, SECURITY_DISABLED_DIRECTIVE, VERBOSITY_DIRECTIVES
 from app.services.replies import render_reply
-from app.services.reviewer import BANNER, COMMENT_TRUNCATION_NOTE, FOOTER, PLAN_BANNER
+from app.services.reviewer import BANNER, COMMENT_TRUNCATION_NOTE, FOLLOWUP_BANNER, FOOTER, PLAN_BANNER
 from tests.e2e.diffs import (
     EDGE_SCENARIOS,
     PLANTED_SCENARIOS,
@@ -180,7 +180,7 @@ async def test_truncation_with_max_diff_chars(pipeline, monkeypatch):
     pipeline.record(scenario, delivery, max_diff_chars=2000)
 
 
-async def test_unlimited_diff_is_sent_whole(pipeline):
+async def test_unlimited_large_diff_is_batched_and_reviewed_whole(pipeline):
     scenario = scenario_for_tier("large")
     pipeline.open_pr(15, scenario)
 
@@ -188,9 +188,12 @@ async def test_unlimited_diff_is_sent_whole(pipeline):
 
     [review] = pipeline.reviews()
     assert not review.diff_truncated
-    user_content = pipeline.llm.user_content(pipeline.llm.requests[-1])
-    assert scenario.diff.rstrip().splitlines()[-1] in user_content
-    assert "DIFF TRUNCATED" not in user_content
+    *batches, merge = [pipeline.llm.user_content(r) for r in pipeline.llm.requests]
+    assert len(batches) == 2 and "partial reviews follow" in merge
+    assert scenario.diff.rstrip().splitlines()[-1] in batches[-1]
+    assert all("DIFF TRUNCATED" not in c and f"of {len(batches)}." in c for c in batches)
+    [comment] = pipeline.github.comments_for(15)
+    assert "Partially reviewed" not in comment
 
 
 async def test_long_llm_output_is_truncated_to_comment_limit(pipeline):
@@ -237,3 +240,37 @@ async def test_edge_diffs_complete(pipeline, name):
         assert UNICODE_MARKER in pipeline.github.comments_for(18)[0]
         assert "こんにちは" in pipeline.llm.user_content(pipeline.llm.requests[-1])
     pipeline.record(scenario, delivery)
+
+
+async def test_push_after_review_posts_followup_as_new_comment(pipeline):
+    pipeline.open_pr(7, PLANTED_SCENARIOS["sql_injection"])
+    await pipeline.drain()
+    [first] = pipeline.github.comments_for(7)
+
+    pushed = pipeline.push(7, PLANTED_SCENARIOS["no_timeout_retry"], head_sha="f" * 40)
+    assert await pipeline.drain() == 1
+
+    comments = pipeline.github.comments_for(7)
+    assert len(comments) == 2 and comments[0] == first
+    assert comments[1].startswith(f"{FOLLOWUP_BANNER}\n\n_Follow-up to the review of `")
+    previous, followup = pipeline.reviews()
+    assert (followup.trigger, followup.previous_review_id, followup.head_sha) == ("push", previous.id, "f" * 40)
+    request = pipeline.llm.requests[-1]
+    assert pipeline.llm.system_prompt(request).endswith(FOLLOWUP_DIRECTIVE)
+    assert "Previous ReviewPilot review of commit" in pipeline.llm.user_content(request)
+    assert [j.kind for j in pipeline.jobs(pushed)] == ["review"]
+
+
+async def test_push_in_on_demand_mode_waits_for_review_comment(pipeline, login):
+    login()
+    set_rules(pipeline.client, review_mode="on_demand")
+    pipeline.open_pr(8, PLANTED_SCENARIOS["sql_injection"])
+    pipeline.comment(8, "@review")
+    await pipeline.drain()
+
+    pushed = pipeline.push(8, PLANTED_SCENARIOS["no_timeout_retry"], head_sha="e" * 40)
+    assert pipeline.jobs(pushed) == [] and pipeline.event(pushed).error_message == "on-demand mode"
+
+    pipeline.comment(8, "@review")
+    await pipeline.drain()
+    assert pipeline.github.comments_for(8)[-1].startswith(FOLLOWUP_BANNER)

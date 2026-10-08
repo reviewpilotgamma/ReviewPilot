@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import contextvars
 import functools
+import hashlib
 import inspect
 import json
 import os
@@ -91,6 +92,7 @@ class FakeGitHub:
         router.post(url__regex=rf"{base}/repos/[^/]+/[^/]+/issues/comments/\d+/reactions$").mock(
             side_effect=self._reaction
         )
+        router.get(url__regex=rf"{base}/repos/[^/]+/[^/]+/compare/.+").mock(side_effect=self._compare)
 
     # -- setup
     def add_pr(
@@ -102,6 +104,7 @@ class FakeGitHub:
         repo: str = "api",
         state: str = "open",
         author: str = "bob",
+        head_sha: str | None = None,
     ) -> dict[str, Any]:
         additions = sum(1 for line in scenario.diff.splitlines() if line.startswith("+") and not line.startswith("+++"))
         deletions = sum(1 for line in scenario.diff.splitlines() if line.startswith("-") and not line.startswith("---"))
@@ -111,7 +114,10 @@ class FakeGitHub:
             "body": scenario.body,
             "user": {"login": author, "type": "User"},
             "base": {"ref": "main"},
-            "head": {"ref": f"feature/{scenario.name}"},
+            "head": {
+                "ref": f"feature/{scenario.name}",
+                "sha": head_sha or hashlib.sha1(f"{owner}/{repo}#{number}:{scenario.name}".encode()).hexdigest(),
+            },
             "state": state,
             "draft": False,
             "additions": additions,
@@ -122,6 +128,13 @@ class FakeGitHub:
         self.prs[key] = data
         self.diffs[key] = scenario.diff
         return data
+
+    def push(self, number: int, scenario: DiffScenario, *, head_sha: str, owner: str = "acme", repo: str = "api") -> None:
+        """Replace the PR's diff and head commit, as a new push does."""
+        key = (owner.lower(), repo.lower(), number)
+        self.diffs[key] = scenario.diff
+        self.prs[key]["head"]["sha"] = head_sha
+        self.prs[key]["changed_files"] = scenario.diff.count("diff --git ")
 
     def fail_next(self, kind: str, status: int, times: int = 1) -> None:
         """Make the next ``times`` calls of ``kind`` (``pull``, ``diff``, ``comment``) return ``status``."""
@@ -164,6 +177,14 @@ class FakeGitHub:
         body = json.loads(request.content)["body"]
         self.comments.append(PostedComment(owner.lower(), repo.lower(), int(number), body, self._next_comment_id))
         return httpx.Response(201, json={"id": self._next_comment_id})
+
+    def _compare(self, request: httpx.Request) -> httpx.Response:
+        """Files of the PR's current diff (the mock keeps no commit history)."""
+        _, owner, repo, *_ = self._parts(request)
+        self.calls["compare"] += 1
+        diffs = [d for (o, r, _), d in self.diffs.items() if (o, r) == (owner.lower(), repo.lower())]
+        paths = re.findall(r"^diff --git a/(\S+) b/", diffs[-1] if diffs else "", re.MULTILINE)
+        return httpx.Response(200, json={"files": [{"filename": p, "additions": 1, "deletions": 0} for p in paths]})
 
     def _reaction(self, request: httpx.Request) -> httpx.Response:
         parts = self._parts(request)
@@ -543,6 +564,13 @@ class Pipeline:
     ) -> str:
         self.github.add_pr(number, scenario, state=state, **kw)
         response, delivery = self._send("pull_request", pr_opened_payload(number, scenario, **kw), delivery)
+        assert response.status_code == 200, response.text
+        return delivery
+
+    def push(self, number: int, scenario: DiffScenario, *, head_sha: str, delivery: str | None = None) -> str:
+        self.github.push(number, scenario, head_sha=head_sha)
+        payload = {**pr_opened_payload(number, scenario), "action": "synchronize", "after": head_sha}
+        response, delivery = self._send("pull_request", payload, delivery)
         assert response.status_code == 200, response.text
         return delivery
 

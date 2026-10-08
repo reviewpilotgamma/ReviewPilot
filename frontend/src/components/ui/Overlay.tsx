@@ -23,7 +23,9 @@ function useDialog(open: boolean, onClose: () => void) {
     panelRef.current?.focus();
 
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCloseRef.current();
+      // Only the topmost dialog (the one holding focus) reacts, so a confirm stacked on a dialog closes alone.
+      const focused = panelRef.current?.contains(document.activeElement) ?? false;
+      if (event.key === "Escape" && focused) onCloseRef.current();
       if (event.key !== "Tab" || !panelRef.current) return;
       const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
       if (items.length === 0) return;
@@ -73,6 +75,52 @@ export function Drawer({ open, onClose, title, children, footer }: DrawerProps) 
         <header className="flex items-start justify-between gap-4 border-b border-border p-5">
           <div id={titleId} className="min-w-0 flex-1">
             {title}
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close" icon={<X className="h-4 w-4" />} />
+        </header>
+        <div className="flex-1 overflow-y-auto p-5">{children}</div>
+        {footer && <footer className="border-t border-border p-5">{footer}</footer>}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+interface DialogProps {
+  open: boolean;
+  onClose: () => void;
+  title: ReactNode;
+  description?: ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
+  size?: "md" | "xl";
+}
+
+/** A large centered popup for editing content; `Modal` stays for short confirmations. */
+export function Dialog({ open, onClose, title, description, children, footer, size = "md" }: DialogProps) {
+  const panelRef = useDialog(open, onClose);
+  const titleId = useId();
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 animate-fade-in bg-[rgba(23,48,44,0.35)] backdrop-blur-[3px]" onClick={onClose} aria-hidden />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className={clsx(
+          "relative flex max-h-[90vh] w-full animate-fade-in flex-col rounded-2xl border border-border bg-bg shadow-2xl",
+          size === "xl" ? "max-w-6xl" : "max-w-3xl",
+        )}
+      >
+        <header className="flex items-start justify-between gap-4 border-b border-border p-5">
+          <div className="min-w-0 flex-1">
+            <h2 id={titleId} className="text-lg font-semibold text-ink">
+              {title}
+            </h2>
+            {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
           </div>
           <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close" icon={<X className="h-4 w-4" />} />
         </header>

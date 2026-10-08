@@ -71,3 +71,41 @@ class TestMasking:
         assert security.is_masked("••••••••1234")
         assert not security.is_masked("real-secret")
         assert not security.is_masked(None)
+
+
+class TestPasswords:
+    def test_round_trip_and_wrong_password(self):
+        stored = security.hash_password("correct horse")
+        assert stored.startswith("scrypt$")
+        assert security.verify_password("correct horse", stored)
+        assert not security.verify_password("wrong horse", stored)
+
+    @pytest.mark.parametrize("stored", [None, "", "plain-text", "bcrypt$1$2$3$c2FsdA==$ZGlnZXN0", "scrypt$x$8$1$a$b"])
+    def test_unknown_or_malformed_hashes_never_verify(self, stored):
+        assert not security.verify_password("anything", stored)
+
+
+class TestEphemeralSecrets:
+    """Without configured secrets, development falls back to per-process random values."""
+
+    @pytest.fixture(autouse=True)
+    def _fresh_cache(self):
+        security._ephemeral_secret.cache_clear()
+        yield
+        security._ephemeral_secret.cache_clear()
+
+    def test_session_tokens_work_with_an_ephemeral_secret(self, monkeypatch, caplog):
+        from app.core.config import reload_settings
+
+        monkeypatch.setenv("SESSION_SECRET", "")
+        reload_settings()
+        token = security.create_session_token(7, "alice")
+        assert security.decode_session_token(token)["sub"] == "7"
+        assert "SESSION_SECRET is not set" in caplog.text
+
+    def test_token_encryption_works_with_an_ephemeral_key(self, monkeypatch):
+        from app.core.config import reload_settings
+
+        monkeypatch.setenv("TOKEN_ENCRYPTION_KEY", "")
+        reload_settings()
+        assert security.decrypt_token(security.encrypt_token("gho_secret")) == "gho_secret"

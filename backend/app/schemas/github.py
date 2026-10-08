@@ -9,7 +9,6 @@ class AppInfo(BaseModel):
     name: str
     install_url: str
     html_url: str
-    local_mode: bool = False
 
 
 class RepoOut(BaseModel):
