@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     GEMINI_TEMPERATURE: float = 0.2
     GEMINI_MAX_OUTPUT_TOKENS: int = 8192
     GEMINI_CACHE_TTL_SECONDS: int = Field(86_400, ge=60, le=7 * 24 * 3600)
+    # Input context window of GEMINI_MODEL (Gemini 3.5 Flash-Lite: 1,048,576). Bounds the size of one diff batch.
+    GEMINI_CONTEXT_TOKENS: int = Field(1_048_576, ge=8_192)
 
     # --- Auth / security ---
     SESSION_SECRET: SecretStr = SecretStr("")
@@ -54,6 +56,11 @@ class Settings(BaseSettings):
     # --- Review engine ---
     # 0 = no truncation (send full PR diff). Positive values restore a hard character cap.
     MAX_DIFF_CHARS: int = Field(0, ge=0)
+    # Large diffs are split into batches of about this many tokens, reviewed concurrently and merged.
+    DIFF_BATCH_TOKENS: int = Field(100_000, ge=1_000)
+    # Above this many batches the batch size grows (up to the context window) instead of dropping files.
+    MAX_DIFF_BATCHES: int = Field(50, ge=1, le=200)
+    DIFF_BATCH_CONCURRENCY: int = Field(4, ge=1, le=16)
     MAX_COMMENT_CHARS: int = Field(65_000, gt=1000, le=65_536)
     INSTALLATION_TOKEN_TTL_SECONDS: int = Field(3000, gt=60, le=3600)
 
@@ -62,7 +69,7 @@ class Settings(BaseSettings):
     WORKER_CONCURRENCY: int = Field(2, ge=1, le=16)
     WORKER_POLL_INTERVAL_SECONDS: float = Field(1.0, gt=0)
     JOB_MAX_ATTEMPTS: int = Field(3, ge=1, le=10)
-    JOB_TIMEOUT_SECONDS: float = Field(180.0, gt=0)
+    JOB_TIMEOUT_SECONDS: float = Field(600.0, gt=0)
 
     @property
     def is_production(self) -> bool:

@@ -1,12 +1,13 @@
 import { ExternalLink } from "lucide-react";
 import { MarkdownView } from "@/components/diff/MarkdownView";
-import { VerdictBadge } from "@/components/ui/Badge";
+import { PartialBadge, VerdictBadge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Overlay";
 import { ErrorState } from "@/components/ui/States";
 import { Spinner } from "@/components/ui/Spinner";
 import { useReview } from "@/hooks/useReviews";
 import { absoluteTime, formatScore } from "@/lib/format";
 import { FeedbackWidget } from "./FeedbackWidget";
+import { ReviewedWith } from "./ReviewedWith";
 
 export function ReviewDrawer({ reviewId, onClose }: { reviewId: number | null; onClose: () => void }) {
   const { data: review, isLoading, isError, refetch } = useReview(reviewId);
@@ -19,6 +20,7 @@ export function ReviewDrawer({ reviewId, onClose }: { reviewId: number | null; o
       <h2 className="text-lg font-semibold leading-snug">{review.pr_title}</h2>
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
         <VerdictBadge verdict={review.verdict} />
+        {review.diff_truncated && <PartialBadge />}
         <span className="font-medium text-ink">{formatScore(review.score)}</span>
         <span>·</span>
         <span>{absoluteTime(review.created_at)}</span>
@@ -35,6 +37,7 @@ export function ReviewDrawer({ reviewId, onClose }: { reviewId: number | null; o
           Open on GitHub <ExternalLink className="h-3 w-3" />
         </a>
       </div>
+      <ReviewedWith context={review.review_context} />
     </div>
   ) : (
     <h2 className="text-lg font-semibold">Review</h2>

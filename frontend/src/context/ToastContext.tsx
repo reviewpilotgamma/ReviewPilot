@@ -1,8 +1,8 @@
-import { CheckCircle2, Info, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
 import { createContext, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import clsx from "clsx";
 
-type ToastKind = "success" | "error" | "info";
+type ToastKind = "success" | "error" | "info" | "warning";
 interface Toast {
   id: number;
   kind: ToastKind;
@@ -13,12 +13,13 @@ export interface ToastApi {
   success: (message: string) => void;
   error: (message: string) => void;
   info: (message: string) => void;
+  warning: (message: string) => void;
 }
 
 export const ToastContext = createContext<ToastApi | null>(null);
 
 const DISMISS_MS = 4000;
-const ICONS = { success: CheckCircle2, error: XCircle, info: Info } as const;
+const ICONS = { success: CheckCircle2, error: XCircle, info: Info, warning: AlertTriangle } as const;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -35,6 +36,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       success: (m) => push("success", m),
       error: (m) => push("error", m),
       info: (m) => push("info", m),
+      warning: (m) => push("warning", m),
     }),
     [push],
   );
@@ -53,6 +55,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 "glass pointer-events-auto flex animate-fade-in items-start gap-2 px-4 py-3 text-sm shadow-lg",
                 toast.kind === "success" && "border-emerald/40",
                 toast.kind === "error" && "border-rose/40",
+                toast.kind === "warning" && "border-amber/40",
               )}
             >
               <Icon
@@ -61,6 +64,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   toast.kind === "success" && "text-emerald",
                   toast.kind === "error" && "text-rose",
                   toast.kind === "info" && "text-violet",
+                  toast.kind === "warning" && "text-amber",
                 )}
               />
               <span>{toast.message}</span>

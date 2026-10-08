@@ -9,6 +9,11 @@ export function absoluteTime(iso: string): string {
   return new Date(iso).toLocaleString();
 }
 
+/** "Oct 7" */
+export function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export function formatScore(score: number | null | undefined): string {
   return score === null || score === undefined ? "—" : `${score.toFixed(1)}/10`;
 }

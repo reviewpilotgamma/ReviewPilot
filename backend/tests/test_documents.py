@@ -67,3 +67,78 @@ async def test_ensure_context_cache_reuses_stored_cache(db):
     cached, inline = await ensure_context_cache(db, "acme/api")
     assert cached == "cachedContents/abc"
     assert "BEGIN DOCUMENT: arch.md" in inline
+
+
+# --------------------------------------------------------------------------- warm_context_cache / cache_state
+CACHE_URL = "https://gemini.test/v1beta/cachedContents"
+
+
+async def _save(db, text: str, filename: str = "arch.md"):
+    await save_document(
+        db, repo_full_name="acme/api", filename=filename, content_type="text/markdown",
+        data=text.encode(), user_id=None,
+    )
+
+
+def _big(tag: str = "v1") -> str:
+    from app.services.documents import MIN_CACHE_CHARS
+
+    return f"# Handbook {tag}\n" + "Services own their data.\n" * (MIN_CACHE_CHARS // 24 + 10)
+
+
+def _cache_ok(mock_http):
+    return mock_http.post(CACHE_URL).respond(
+        200, json={"name": "cachedContents/w1", "expireTime": "2099-01-01T00:00:00Z"}
+    )
+
+
+async def test_warm_below_gate_is_inline_without_gemini(db, mock_http):
+    from app.services.documents import warm_context_cache
+
+    route = _cache_ok(mock_http)
+    await _save(db, "# Small\n")
+    assert (await warm_context_cache(db, "acme/api")).status == "inline"
+    assert not route.called
+
+
+async def test_warm_above_gate_builds_once_and_reuses(db, mock_http):
+    from app.services.documents import cache_state, warm_context_cache
+
+    route = _cache_ok(mock_http)
+    await _save(db, _big())
+    assert cache_state(db, "acme/api").status == "pending"
+    assert (await warm_context_cache(db, "acme/api")).status == "cached"
+    assert cache_state(db, "acme/api").status == "cached"
+    state = await warm_context_cache(db, "acme/api")
+    assert (state.status, state.error) == ("cached", None)
+    assert route.call_count == 1
+
+
+async def test_warm_failure_is_pending_with_reason(db, mock_http):
+    from app.services.documents import cache_state, warm_context_cache
+
+    mock_http.post(CACHE_URL).respond(500, json={"error": {"message": "backend unavailable"}})
+    await _save(db, _big())
+    state = await warm_context_cache(db, "acme/api")
+    assert state.status == "pending"
+    assert "Gemini 500" in state.error and "gemini-key-1234" not in state.error
+    assert cache_state(db, "acme/api").status == "pending"
+
+
+async def test_warm_without_gemini_key_is_pending(db, mock_http, monkeypatch):
+    from app.core.config import reload_settings
+    from app.services.documents import warm_context_cache
+
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    reload_settings()
+    route = _cache_ok(mock_http)
+    await _save(db, _big())
+    state = await warm_context_cache(db, "acme/api")
+    assert (state.status, state.error) == ("pending", "Gemini is not configured")
+    assert not route.called
+
+
+def test_cache_state_none_without_documents(db):
+    from app.services.documents import cache_state
+
+    assert cache_state(db, "acme/api").status == "none"

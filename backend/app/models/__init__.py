@@ -6,6 +6,7 @@ from app.models.pr_review import PRReview
 from app.models.repo_document import RepoContextCache, RepoDocument
 from app.models.repo_rule import RepoRule
 from app.models.review_feedback import ReviewFeedback
+from app.models.review_prompt import ReviewPrompt
 from app.models.user import User
 from app.models.webhook_event import WebhookEvent
 
@@ -16,6 +17,7 @@ __all__ = [
     "RepoContextCache",
     "RepoDocument",
     "RepoRule",
+    "ReviewPrompt",
     "ReviewFeedback",
     "User",
     "WebhookEvent",

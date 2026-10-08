@@ -7,13 +7,14 @@ import type {
   MetricsSummary,
   Page,
   Preset,
+  PromptTemplate,
   Rating,
   Replies,
   ReviewDetail,
   ReviewFilters,
   ReviewListItem,
-  RepoDocument,
   RepoDocumentList,
+  RepoDocumentUpload,
   Rule,
   RuleInput,
   Settings,
@@ -48,12 +49,20 @@ export const rulesApi = {
   save: (repo: string, body: RuleInput) => http.put<Rule>(`/rules${repoPath(repo)}`, body),
   reset: (repo: string) => http.delete<void>(`/rules${repoPath(repo)}`),
   listDocuments: (repo: string) => http.get<RepoDocumentList>(`/rules${repoPath(repo)}/documents`),
-  uploadDocument: (repo: string, file: File) => {
+  /** `warm: false` skips building the Gemini cache (use for all but the last file of a batch). */
+  uploadDocument: (repo: string, file: File, { warm = true }: { warm?: boolean } = {}) => {
     const form = new FormData();
     form.append("file", file);
-    return http.upload<RepoDocument>(`/rules${repoPath(repo)}/documents`, form);
+    const query = warm ? "" : "?warm=false";
+    return http.upload<RepoDocumentUpload>(`/rules${repoPath(repo)}/documents${query}`, form);
   },
   deleteDocument: (repo: string, id: number) => http.delete<void>(`/rules${repoPath(repo)}/documents/${id}`),
+};
+
+export const promptApi = {
+  get: () => http.get<PromptTemplate>("/prompt"),
+  save: (template: string) => http.put<PromptTemplate>("/prompt", { template }),
+  reset: () => http.delete<void>("/prompt"),
 };
 
 export const reviewsApi = {

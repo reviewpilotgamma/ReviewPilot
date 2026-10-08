@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy.orm import Session
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 
 from app.api.deps import AccessibleRepo, CurrentUser, DbSession, csrf_protect
-from app.models import RepoContextCache
-from app.schemas.documents import DocumentListOut, DocumentOut
+from app.schemas.documents import DocumentListOut, DocumentOut, DocumentUploadOut
 from app.services import documents as docs_service
 from app.services.documents import DocumentError
 
@@ -27,31 +27,25 @@ def _to_out(doc) -> DocumentOut:
     )
 
 
-def _cache_status(db: Session, repo: str) -> str:
-    docs = docs_service.list_documents(db, repo)
-    if not docs:
-        return "none"
-    row = db.get(RepoContextCache, repo.lower())
-    return "cached" if row is not None else "inline"
-
-
 @router.get("/{owner}/{repo}/documents", response_model=DocumentListOut)
 def list_documents(db: DbSession, full_name: AccessibleRepo) -> DocumentListOut:
     items = docs_service.list_documents(db, full_name)
     return DocumentListOut(
         items=[_to_out(doc) for doc in items],
         total=len(items),
-        cache_status=_cache_status(db, full_name),
+        cache_status=docs_service.cache_state(db, full_name).status,
     )
 
 
-@router.post("/{owner}/{repo}/documents", response_model=DocumentOut, status_code=status.HTTP_201_CREATED)
+@router.post("/{owner}/{repo}/documents", response_model=DocumentUploadOut, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     db: DbSession,
     user: CurrentUser,
     full_name: AccessibleRepo,
     file: UploadFile = File(...),
-) -> DocumentOut:
+    warm: Annotated[bool, Query(description="Build the Gemini cache now (false for all but the last file)")] = True,
+) -> DocumentUploadOut:
+    """Save the document; with ``warm`` (default), build the repo's Gemini cache before responding."""
     data = await file.read()
     try:
         doc = await docs_service.save_document(
@@ -64,11 +58,15 @@ async def upload_document(
         )
     except DocumentError as exc:
         raise HTTPException(exc.status_code, exc.message) from exc
-    return _to_out(doc)
+    state = await docs_service.warm_context_cache(db, full_name) if warm else docs_service.cache_state(db, full_name)
+    return DocumentUploadOut(**_to_out(doc).model_dump(), cache_status=state.status, cache_error=state.error)
 
 
 @router.delete("/{owner}/{repo}/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_document(db: DbSession, full_name: AccessibleRepo, document_id: int) -> None:
+async def delete_document(db: DbSession, full_name: AccessibleRepo, document_id: int) -> Response:
     deleted = await docs_service.delete_document(db, full_name, document_id)
     if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
+    # Rebuild for the remaining documents; failures fall back to the lazy build on the next review.
+    await docs_service.warm_context_cache(db, full_name)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

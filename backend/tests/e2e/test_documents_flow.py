@@ -1,4 +1,4 @@
-"""Repo documents end to end: upload → inline injection or Gemini context cache → reuse → invalidation."""
+"""Repo documents end to end: upload builds the Gemini context cache (or inline) → reviews reuse it → invalidation."""
 
 from __future__ import annotations
 
@@ -15,10 +15,12 @@ def big_doc(tag: str) -> str:
     return "# Architecture handbook\n\n" + line * (MIN_CACHE_CHARS // len(line) + 50)
 
 
-def upload(client, text: str, filename: str = "arch.md") -> int:
-    response = client.post(DOCS_URL, files={"file": (filename, text.encode("utf-8"), "text/markdown")})
+def upload(client, text: str, filename: str = "arch.md", **params) -> dict:
+    response = client.post(
+        DOCS_URL, params=params, files={"file": (filename, text.encode("utf-8"), "text/markdown")}
+    )
     assert response.status_code == 201, response.text
-    return response.json()["id"]
+    return response.json()
 
 
 async def review(pipeline, number: int) -> dict:
@@ -27,9 +29,13 @@ async def review(pipeline, number: int) -> dict:
     return pipeline.llm.requests[-1]
 
 
+def cached_text(pipeline, index: int) -> str:
+    return pipeline.llm.cache_creates[index]["contents"][0]["parts"][0]["text"]
+
+
 async def test_small_document_is_injected_inline(pipeline, login):
     login()
-    upload(pipeline.client, SMALL_DOC)
+    assert upload(pipeline.client, SMALL_DOC)["cache_status"] == "inline"
 
     body = await review(pipeline, 30)
 
@@ -40,47 +46,67 @@ async def test_small_document_is_injected_inline(pipeline, login):
     assert len(pipeline.reviews()) == 1
 
 
-async def test_large_document_uses_cache_reuses_and_invalidates(pipeline, login):
+async def test_large_document_cached_at_upload_reused_and_invalidated(pipeline, login):
     login()
-    doc_id = upload(pipeline.client, big_doc("v1"))
+    uploaded = upload(pipeline.client, big_doc("v1"))
+
+    # The cache exists before any review runs.
+    assert uploaded["cache_status"] == "cached"
+    assert len(pipeline.llm.cache_creates) == 1 and pipeline.llm.generate_calls == 0
+    assert "Rule v1" in cached_text(pipeline, 0) and "acme/api" in cached_text(pipeline, 0)
 
     first = await review(pipeline, 31)
-    assert len(pipeline.llm.cache_creates) == 1
-    assert first["cachedContent"] == "cachedContents/e2e1"
-    assert MARKER not in pipeline.llm.system_prompt(first)
-    cached_text = pipeline.llm.cache_creates[0]["contents"][0]["parts"][0]["text"]
-    assert "Rule v1" in cached_text and "acme/api" in cached_text
-
     second = await review(pipeline, 32)
-    assert len(pipeline.llm.cache_creates) == 1, "unchanged documents must reuse the cache"
-    assert second["cachedContent"] == "cachedContents/e2e1"
+    assert len(pipeline.llm.cache_creates) == 1, "reviews must reuse the cache built at upload"
+    assert first["cachedContent"] == second["cachedContent"] == "cachedContents/e2e1"
+    assert MARKER not in pipeline.llm.system_prompt(first)
 
-    # Re-uploading the same filename with new content invalidates the cache.
-    assert upload(pipeline.client, big_doc("v2")) == doc_id
-    assert pipeline.llm.cache_deletes == ["e2e1"]
+    # Re-uploading the same filename with new content swaps the cache during the upload.
+    changed = upload(pipeline.client, big_doc("v2"))
+    assert (changed["id"], changed["cache_status"]) == (uploaded["id"], "cached")
+    assert pipeline.llm.cache_deletes == ["e2e1"] and len(pipeline.llm.cache_creates) == 2
+    assert "Rule v2" in cached_text(pipeline, 1)
     third = await review(pipeline, 33)
-    assert len(pipeline.llm.cache_creates) == 2
     assert third["cachedContent"] == "cachedContents/e2e2"
-    assert "Rule v2" in pipeline.llm.cache_creates[1]["contents"][0]["parts"][0]["text"]
+    assert len(pipeline.llm.cache_creates) == 2
 
     # Deleting the only document drops the cache and the next review has no documents.
-    assert pipeline.client.delete(f"{DOCS_URL}/{doc_id}").status_code == 204
+    assert pipeline.client.delete(f"{DOCS_URL}/{uploaded['id']}").status_code == 204
     assert pipeline.llm.cache_deletes == ["e2e1", "e2e2"]
+    assert pipeline.client.get(DOCS_URL).json()["cache_status"] == "none"
     fourth = await review(pipeline, 34)
     assert "cachedContent" not in fourth
     assert MARKER not in pipeline.llm.system_prompt(fourth)
     assert len(pipeline.reviews()) == 4
 
 
-async def test_cache_create_failure_falls_back_to_inline(pipeline, login):
+async def test_batch_upload_builds_one_cache(pipeline, login):
     login()
-    upload(pipeline.client, big_doc("v1"))
-    pipeline.llm.fail_next(500)  # consumed by the cachedContents create (docs load runs before generate)
+    statuses = [
+        upload(pipeline.client, big_doc("a"), "a.md", warm="false")["cache_status"],
+        upload(pipeline.client, big_doc("b"), "b.md", warm="false")["cache_status"],
+        upload(pipeline.client, SMALL_DOC, "c.md")["cache_status"],
+    ]
 
-    body = await review(pipeline, 35)
+    assert statuses == ["pending", "pending", "cached"]
+    assert len(pipeline.llm.cache_creates) == 1
+    text = cached_text(pipeline, 0)
+    assert all(f"BEGIN DOCUMENT: {name}" in text for name in ("a.md", "b.md", "c.md"))
+    body = await review(pipeline, 36)
+    assert body["cachedContent"] == "cachedContents/e2e1"
 
+
+async def test_failed_upload_build_is_pending_then_built_by_next_review(pipeline, login):
+    login()
+    pipeline.llm.fail_next(500)  # consumed by the cachedContents create during the upload
+
+    uploaded = upload(pipeline.client, big_doc("v1"))
+
+    assert uploaded["cache_status"] == "pending" and "Gemini 500" in uploaded["cache_error"]
     assert pipeline.llm.cache_creates == []
-    assert "cachedContent" not in body
-    assert MARKER in pipeline.llm.system_prompt(body)
+    body = await review(pipeline, 35)
+    assert len(pipeline.llm.cache_creates) == 1, "the review builds the cache lazily"
+    assert body["cachedContent"] == "cachedContents/e2e1"
+    assert pipeline.client.get(DOCS_URL).json()["cache_status"] == "cached"
     [review_row] = pipeline.reviews()
     assert review_row.verdict == "warning"

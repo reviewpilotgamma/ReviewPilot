@@ -31,6 +31,8 @@ class PRReview(Base):
     github_comment_id: Mapped[int | None] = mapped_column(Integer)
     diff_truncated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     model: Mapped[str] = mapped_column(String(100), default="", nullable=False)
+    # JSON: which golden prompt, instructions and documents this review used (null for older reviews).
+    review_context: Mapped[str | None] = mapped_column(Text)
 
     feedback = relationship(
         "ReviewFeedback", back_populates="review", cascade="all, delete-orphan", passive_deletes=True
