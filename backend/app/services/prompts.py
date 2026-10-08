@@ -79,6 +79,20 @@ Every section is a bulleted or numbered list; never write paragraphs.
 - **Overall risk:** one sentence.
 - **Main concern:** one sentence (omit this bullet if there are no Critical or Warning findings).
 
+### Scope Check
+Compare the PR description with the diff and the changed-file list:
+- **Matches description:** Yes, Partly, or No.
+- **Unexpected changes:**
+  - `path/to/file.py`: what changed and why it looks unrelated to the description.
+- **Described but not found:**
+  - what the description promises that the diff does not contain.
+Write "None." under a heading that has no items. If the description is empty or too vague to compare, replace the
+whole section with one bullet: **No description to compare against.** Ask the author to summarize the intended
+changes.
+Scope differences are informational: never add a finding, change the verdict, or lower the score because of them.
+Review unexpected code like any other change. Never flag lockfiles or generated files as unexpected. Do not use
+the severity tags in this section.
+
 ### Architectural Findings
 One item per finding. The item starts with a severity tag, **Critical**, **Warning**, or **Passed**, then " · " and
 a short bold title, followed by exactly these sub-bullets:
@@ -193,17 +207,33 @@ def build_review_system_prompt(rules: RuleSettings, requester_note: str | None, 
     return render_template(template or DEFAULT_REVIEW_TEMPLATE, review_slot_values(rules, requester_note))
 
 
-def build_pr_context(pr: PullRequest, owner: str, repo: str, diff: str) -> str:
+def _description(pr: PullRequest) -> str:
     description = pr.body.strip()
     if len(description) > MAX_DESCRIPTION_CHARS:
         description = description[:MAX_DESCRIPTION_CHARS] + "\n[... description truncated ...]"
+    return description or "(no description)"
+
+
+def format_manifest(manifest: list[tuple[str, int, int]]) -> str:
+    listed = [f"- {path} (+{adds}/-{dels})" for path, adds, dels in manifest[:MAX_MANIFEST_FILES]]
+    if len(manifest) > MAX_MANIFEST_FILES:
+        listed.append(f"- …and {len(manifest) - MAX_MANIFEST_FILES} more")
+    return "\n".join(listed)
+
+
+def build_pr_context(
+    pr: PullRequest, owner: str, repo: str, diff: str, *, manifest: list[tuple[str, int, int]] | None = None
+) -> str:
+    """PR context for the reviewer. ``manifest`` lists every changed file, for the scope check on a partial diff."""
+    files = f"Changed files:\n{format_manifest(manifest)}\n\n" if manifest else ""
     return (
         f"Pull Request: #{pr.number} — {pr.title}\n"
         f"Repository: {owner}/{repo}\n"
         f"Author: {pr.author}\n"
         f"Base: {pr.base_ref} ← Head: {pr.head_ref}\n"
         f"Stats: +{pr.additions} / -{pr.deletions} across {pr.changed_files} files\n\n"
-        f"Description:\n{description or '(no description)'}\n\n"
+        f"Description:\n{_description(pr)}\n\n"
+        f"{files}"
         f"Diff:\n```diff\n{diff}\n```"
     )
 
@@ -219,14 +249,13 @@ def build_batch_context(
     manifest: list[tuple[str, int, int]],
 ) -> str:
     """PR context for one batch of a large diff: the full file list for reference, then only this batch's diff."""
-    listed = [f"- {path} (+{adds}/-{dels})" for path, adds, dels in manifest[:MAX_MANIFEST_FILES]]
-    if len(manifest) > MAX_MANIFEST_FILES:
-        listed.append(f"- …and {len(manifest) - MAX_MANIFEST_FILES} more")
     note = (
         f"This PR is too large to review in one pass. This is batch {index} of {total}.\n"
         "Review ONLY the diff below, in the standard output format. The file list is for reference only, so you "
-        "can reason about cross-file effects; do not report findings on files whose diff is not shown here.\n\n"
-        "Files in this PR (for reference only — review only the diff below):\n" + "\n".join(listed) + "\n\n"
+        "can reason about cross-file effects; do not report findings on files whose diff is not shown here.\n"
+        "In Scope Check, list only unexpected changes in this batch's diff and omit **Described but not found**; "
+        "the final merge decides that for the whole PR.\n\n"
+        "Files in this PR (for reference only — review only the diff below):\n" + format_manifest(manifest) + "\n\n"
     )
     head, sep, tail = build_pr_context(pr, owner, repo, diff).partition("Diff:\n")
     return f"{head}{note}{sep}{tail}"
@@ -244,6 +273,8 @@ Rules:
   the same issue into one finding listing all affected files. Never drop or downgrade a Critical finding.
 - Write one Executive Summary for the whole PR, not one per part.
 - Merge the recommendations into one numbered list without duplicates.
+- Write one Scope Check for the whole PR: combine the parts' unexpected changes, and decide "Described but not
+  found" by comparing the PR description below with all parts' files and reviews.
 
 """
     + OUTPUT_FORMAT
@@ -271,7 +302,8 @@ def build_merge_content(
     parts = [
         f"Pull Request: #{pr.number} — {pr.title}\n"
         f"Repository: {owner}/{repo}\n"
-        f"Stats: +{pr.additions} / -{pr.deletions} across {pr.changed_files} files\n"
+        f"Stats: +{pr.additions} / -{pr.deletions} across {pr.changed_files} files\n\n"
+        f"Description:\n{_description(pr)}\n\n"
         f"Reviewed in {total} parts; {len(reviews)} partial reviews follow.\n"
     ]
     for number, files, verdict, score, body in reviews:

@@ -16,4 +16,4 @@
 
 ## Phase 1: Spacing
 
-- [~] **1.1 Em-space separators.** Update the files above. Gate: `ruff check .`, `pytest`, `npm run lint`, `npm run typecheck`, `npm test`.
+- [x] **1.1 Em-space separators.** `6201835` Update the files above. Gate: `ruff check .`, `pytest`, `npm run lint`, `npm run typecheck`, `npm test`.
