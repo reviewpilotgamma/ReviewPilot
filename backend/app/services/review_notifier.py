@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import time
+import asyncio
 
 from app.core.config import get_settings
 from app.core.http import get_http_client
@@ -23,4 +23,4 @@ async def notify_review_posted(repo: str, pr_number: int, verdict: str) -> None:
         )
         if response.status_code < 500 or attempt == MAX_ATTEMPTS:
             return
-        time.sleep(2**attempt)
+        await asyncio.sleep(2**attempt)
