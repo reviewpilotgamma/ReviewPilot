@@ -82,3 +82,8 @@
 - One conventional commit per task on `feature/credential-auth`, with the SHA recorded in `plan.md`.
 - Commits leave out the user's unrelated `README.md` sqlite-backup edit and the `lines_kpi` plan edit (README
   hunks are staged selectively).
+
+## Implementation notes
+
+- **Prompt hardening from live runs:** `a539da7` (account for every earlier finding, Follow-up Status before Scope Check), `d946564` (numbered checklist of earlier findings extracted in code by `previous_findings`), `699d7c7` (a finding stays open while its code is present). Gemini still judged a fail-open `except Exception` as not worth listing on PR #5, so the demo uses unambiguous issues.
+- **Demo PR #13** (`demo/review-notifier`): review 1 at `77d91f8`: Critical 3.5 with 4 findings. Follow-up 1 at `23b6aba`: 3 fixed, "Blocking I/O in async function" still open, Critical 4.5. Follow-up 2 at `7cfb8fc`: last one fixed, Passed 9.5. Three comments total, headlines show the reviewed commit and files changed.
