@@ -35,7 +35,7 @@ const COMPARISON: [string, Support, Support][] = [
 
 const SAMPLE_COMMENT = `## ReviewPilot Architectural Audit
 
-**Verdict:** 🟡 Warning   ·   **Health score:** 6.8/10   ·   **Lines reviewed:** 214
+**Verdict:** 🟡 Warning&emsp;·&emsp;**Health score:** 6.8/10&emsp;·&emsp;**Lines reviewed:** 214
 
 ### Executive Summary
 - **What it does:** Adds retry logic to the payments client.

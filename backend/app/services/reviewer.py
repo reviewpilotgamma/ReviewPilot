@@ -61,6 +61,8 @@ COMMENT_TRUNCATION_NOTE = (
 PLAN_MAX_DIFF_CHARS = 40_000
 PLAN_MAX_OUTPUT_TOKENS = 2048
 VERDICT_LABELS = {"passed": "🟢 Passed", "warning": "🟡 Warning", "critical": "🔴 Critical Risk"}
+# Markdown collapses plain spaces, so em-space entities keep the verdict line readable.
+META_SEPARATOR = "&emsp;·&emsp;"
 VERDICT_RANK = {"passed": 0, "warning": 1, "critical": 2}
 
 # Batched reviews of large diffs.
@@ -188,8 +190,8 @@ def assemble_comment(
     header = [
         BANNER,
         "",
-        f"**Verdict:** {VERDICT_LABELS[parsed.verdict]}   ·   "
-        f"**Health score:** {parsed.score:.1f}/10   ·   **Lines reviewed:** {lines_reviewed:,}",
+        f"**Verdict:** {VERDICT_LABELS[parsed.verdict]}{META_SEPARATOR}"
+        f"**Health score:** {parsed.score:.1f}/10{META_SEPARATOR}**Lines reviewed:** {lines_reviewed:,}",
     ]
     if trigger == "comment" and requester:
         note = f": “{requester_note}”" if requester_note else ""

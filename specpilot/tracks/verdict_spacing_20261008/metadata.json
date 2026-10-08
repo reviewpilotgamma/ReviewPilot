@@ -1,0 +1,9 @@
+{
+  "track_id": "verdict_spacing_20261008",
+  "title": "Wider spacing in the review verdict line",
+  "type": "chore",
+  "status": "in progress",
+  "created": "2026-10-08",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}

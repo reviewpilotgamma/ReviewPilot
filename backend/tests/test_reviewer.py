@@ -112,6 +112,7 @@ async def test_happy_path_persists_and_posts(github, db):
     assert body.startswith("## ReviewPilot Architectural Audit")
     assert body.rstrip().endswith("_Triggered via ReviewPilot · Architecture Gatekeeper_")
     assert "🔴 Critical Risk" in body and "3.5/10" in body
+    assert "**Verdict:** 🔴 Critical Risk&emsp;·&emsp;**Health score:** 3.5/10&emsp;·&emsp;**Lines reviewed:**" in body
     assert "_Requested by @alice: “focus on auth boundaries”_" in body
     assert "reviewpilot-meta" not in body
 
