@@ -1,8 +1,8 @@
 import { Copy, FileText, Info, Lock, PencilLine, RotateCcw, Save } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Drawer, Modal } from "@/components/ui/Overlay";
+import { Modal } from "@/components/ui/Overlay";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState } from "@/components/ui/States";
 import { useToast } from "@/hooks/useAuth";
@@ -28,14 +28,13 @@ interface PromptQuery {
   refetch: () => unknown;
 }
 
-interface PromptDrawerProps {
-  open: boolean;
-  onClose: () => void;
+interface GoldenPromptPanelProps {
   repo: string;
   form: RuleInput;
   docs: RepoDocumentList | undefined;
   prompt: PromptQuery;
   isAdmin: boolean;
+  onDirtyChange: (dirty: boolean) => void;
 }
 
 function SlotMark({ part }: { part: Extract<AssembledPart, { kind: "slot" }> }) {
@@ -182,8 +181,8 @@ function PromptEditor({ prompt, draft, setDraft, serverErrors }: EditorProps) {
   );
 }
 
-/** The exact golden prompt with this repo's additions in place; admins can edit the org-wide template. */
-export function PromptDrawer({ open, onClose, repo, form, docs, prompt: query, isAdmin }: PromptDrawerProps) {
+/** The exact golden prompt with this repo's saved additions in place; admins can edit the org-wide template. */
+export function GoldenPromptPanel({ repo, form, docs, prompt: query, isAdmin, onDirtyChange }: GoldenPromptPanelProps) {
   const toast = useToast();
   const save = useSavePrompt();
   const reset = useResetPrompt();
@@ -194,16 +193,13 @@ export function PromptDrawer({ open, onClose, repo, form, docs, prompt: query, i
   const prompt = query.data;
   const dirty = editing && prompt !== undefined && draft !== prompt.template;
   const clientErrors = prompt && editing ? validateTemplate(draft, prompt).errors : [];
+  useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
   const leaveEditor = () => {
     if (dirty && !window.confirm("Discard your changes to the golden prompt?")) return false;
     setEditing(false);
     setServerErrors([]);
     return true;
-  };
-  const close = () => {
-    if (editing && !leaveEditor()) return;
-    onClose();
   };
   const startEditing = () => {
     if (!prompt) return;
@@ -249,7 +245,7 @@ export function PromptDrawer({ open, onClose, repo, form, docs, prompt: query, i
       <p className="text-sm text-muted">
         {editing
           ? "The system prompt behind every PR review, for all repositories."
-          : `The exact system prompt sent for every PR review of ${repo}, including unsaved changes on this page.`}
+          : `The exact system prompt sent for every PR review of ${repo}.`}
       </p>
     </div>
   );
@@ -299,7 +295,9 @@ export function PromptDrawer({ open, onClose, repo, form, docs, prompt: query, i
 
   return (
     <>
-      <Drawer open={open} onClose={close} title={title} footer={footer}>
+      <section className="glass flex flex-col">
+        <header className="border-b border-border p-5">{title}</header>
+        <div className="p-5">
         {query.isLoading && (
           <div className="flex justify-center py-16">
             <Spinner className="h-6 w-6" />
@@ -320,7 +318,9 @@ export function PromptDrawer({ open, onClose, repo, form, docs, prompt: query, i
           ) : (
             <PromptView prompt={prompt} form={form} docs={docs} />
           ))}
-      </Drawer>
+        </div>
+        {footer && <footer className="border-t border-border p-5">{footer}</footer>}
+      </section>
       <Modal
         open={confirmReset}
         onClose={() => setConfirmReset(false)}

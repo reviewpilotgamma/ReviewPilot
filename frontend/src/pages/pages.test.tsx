@@ -61,73 +61,6 @@ describe("Removed Run review route", () => {
   });
 });
 
-describe("Rules page", () => {
-  it("appends preset chips without duplicates and enables Save when dirty", async () => {
-    let saved: unknown = null;
-    mockFetch({
-      "GET /api/v1/rules/presets": PRESETS,
-      "GET /api/v1/rules/acme/api": DEFAULT_RULE,
-      "GET /api/v1/prompt": promptFixture(),
-      "PUT /api/v1/rules/acme/api": (_url: URL, init: RequestInit) => {
-        saved = JSON.parse(String(init.body));
-        return { ...DEFAULT_RULE, ...(saved as object), is_default: false, updated_at: "2026-10-01T00:00:00Z" };
-      },
-    });
-    const user = userEvent.setup();
-    renderWithProviders(<Rules />, { path: "/rules" });
-
-    const textarea = await screen.findByLabelText("Custom instructions");
-    const save = screen.getByRole("button", { name: "Save" });
-    expect(save).toBeDisabled();
-    expect(screen.getByText("Using defaults")).toBeInTheDocument();
-
-    const chip = await screen.findByRole("button", { name: "+ Strict Security" });
-    await user.click(chip);
-    await user.click(chip);
-    expect(textarea).toHaveValue("- Check OWASP");
-    await user.click(screen.getByRole("button", { name: "+ Performance & Async" }));
-    expect(textarea).toHaveValue("- Check OWASP\n\n- No blocking IO");
-
-    await user.click(screen.getByRole("radio", { name: "Detailed" }));
-    expect(save).toBeEnabled();
-    // The recipe strip reflects unsaved edits live.
-    expect(screen.getByText("2 lines · Detailed · Security on")).toBeInTheDocument();
-
-    await user.click(save);
-    await waitFor(() =>
-      expect(saved).toEqual({
-        custom_instructions: "- Check OWASP\n\n- No blocking IO",
-        verbosity: "detailed",
-        review_mode: "auto",
-        enable_security: true,
-      }),
-    );
-    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeDisabled());
-  });
-
-  it("asks for confirmation before resetting to defaults", async () => {
-    let deleted = false;
-    mockFetch({
-      "GET /api/v1/rules/presets": PRESETS,
-      "GET /api/v1/rules/acme/api": () =>
-        deleted ? DEFAULT_RULE : { ...DEFAULT_RULE, is_default: false, custom_instructions: "x", updated_at: "t" },
-      "DELETE /api/v1/rules/acme/api": () => {
-        deleted = true;
-        return new Response(null, { status: 204 });
-      },
-    });
-    const user = userEvent.setup();
-    renderWithProviders(<Rules />, { path: "/rules" });
-
-    await user.click(await screen.findByRole("button", { name: "Reset to defaults" }));
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText(/will be deleted/)).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Reset" }));
-    await waitFor(() => expect(deleted).toBe(true));
-    expect(await screen.findByText("Using defaults")).toBeInTheDocument();
-  });
-});
-
 const DOC: RepoDocument = {
   id: 1,
   repo_full_name: "acme/api",
@@ -147,6 +80,7 @@ const RULES_ROUTES = {
   "GET /api/v1/rules/presets": PRESETS,
   "GET /api/v1/rules/acme/api": DEFAULT_RULE,
   "GET /api/v1/prompt": promptFixture(),
+  "GET /api/v1/rules/acme/api/documents": docList("none", []),
 };
 
 function fileInput(): HTMLInputElement {
@@ -155,7 +89,145 @@ function fileInput(): HTMLInputElement {
   return input;
 }
 
-describe("Rules documents panel", () => {
+const EMOJI = /\p{Extended_Pictographic}/u;
+
+describe("Rules page", () => {
+  it("opens on the golden prompt with the options in the sidebar and no popup", async () => {
+    mockFetch({
+      ...RULES_ROUTES,
+      "GET /api/v1/rules/acme/api/documents": docList("cached", [DOC, { ...DOC, id: 2, filename: "reqs.pdf" }]),
+    });
+    renderWithProviders(<Rules />, { path: "/rules" });
+
+    const sidebar = await screen.findByRole("complementary", { name: "Repository rules" });
+    expect(within(sidebar).getByText("Using defaults")).toBeInTheDocument();
+    expect(within(sidebar).getByText("Not set, defaults apply")).toBeInTheDocument();
+    expect(await within(sidebar).findByText("2 files · Gemini cache ready")).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector('mark[data-slot="custom_instructions"]')).not.toBeNull());
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByLabelText("Custom instructions")).toBeNull();
+    expect(document.body.textContent).not.toMatch(EMOJI);
+  });
+
+  it("edits custom instructions in a popup and saves them with the saved settings", async () => {
+    let saved: unknown = null;
+    mockFetch({
+      ...RULES_ROUTES,
+      "PUT /api/v1/rules/acme/api": (_url: URL, init: RequestInit) => {
+        saved = JSON.parse(String(init.body));
+        return { ...DEFAULT_RULE, ...(saved as object), is_default: false, updated_at: "2026-10-01T00:00:00Z" };
+      },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<Rules />, { path: "/rules" });
+
+    await user.click(await screen.findByRole("button", { name: "Edit custom instructions" }));
+    const dialog = screen.getByRole("dialog", { name: "Custom instructions" });
+    const textarea = within(dialog).getByLabelText("Custom instructions");
+    const save = within(dialog).getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+
+    const chip = await within(dialog).findByRole("button", { name: "+ Strict Security" });
+    await user.click(chip);
+    await user.click(chip);
+    expect(textarea).toHaveValue("- Check OWASP");
+    await user.click(within(dialog).getByRole("button", { name: "+ Performance & Async" }));
+    expect(textarea).toHaveValue("- Check OWASP\n\n- No blocking IO");
+
+    await user.click(save);
+    await waitFor(() =>
+      expect(saved).toEqual({
+        custom_instructions: "- Check OWASP\n\n- No blocking IO",
+        verbosity: "concise",
+        review_mode: "auto",
+        enable_security: true,
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByText("2 lines")).toBeInTheDocument();
+    expect(document.querySelector('mark[data-slot="custom_instructions"]')?.textContent).toContain("- No blocking IO");
+  });
+
+  it("asks before discarding unsaved instructions", async () => {
+    mockFetch(RULES_ROUTES);
+    const user = userEvent.setup();
+    renderWithProviders(<Rules />, { path: "/rules" });
+
+    await user.click(await screen.findByRole("button", { name: "Edit custom instructions" }));
+    await user.type(screen.getByRole("textbox", { name: "Custom instructions" }), "- Draft");
+    await user.keyboard("{Escape}");
+    const confirm = screen.getByRole("dialog", { name: "Discard unsaved changes?" });
+    await user.click(within(confirm).getByRole("button", { name: "Keep editing" }));
+    expect(screen.getByRole("textbox", { name: "Custom instructions" })).toHaveValue("- Draft");
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(within(screen.getByRole("dialog", { name: "Discard unsaved changes?" })).getByRole("button", { name: "Discard" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("saves a sidebar setting as soon as it changes", async () => {
+    let saved: unknown = null;
+    mockFetch({
+      ...RULES_ROUTES,
+      "PUT /api/v1/rules/acme/api": (_url: URL, init: RequestInit) => {
+        saved = JSON.parse(String(init.body));
+        return { ...DEFAULT_RULE, ...(saved as object), is_default: false, updated_at: "2026-10-01T00:00:00Z" };
+      },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<Rules />, { path: "/rules" });
+
+    await user.click(await screen.findByRole("radio", { name: "Detailed" }));
+    await waitFor(() =>
+      expect(saved).toEqual({ custom_instructions: "", verbosity: "detailed", review_mode: "auto", enable_security: true }),
+    );
+    expect(await screen.findByText("Settings saved")).toBeInTheDocument();
+    expect(screen.queryByText("Using defaults")).toBeNull();
+    expect(screen.getByRole("radio", { name: "Detailed" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("reverts a sidebar setting when saving fails", async () => {
+    mockFetch({
+      ...RULES_ROUTES,
+      "PUT /api/v1/rules/acme/api": () => new Response(JSON.stringify({ detail: "Database unavailable" }), { status: 500 }),
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<Rules />, { path: "/rules" });
+
+    await user.click(await screen.findByRole("switch", { name: "Security audit" }));
+    expect(await screen.findByText(/Database unavailable|Could not save settings/)).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Security audit" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("asks for confirmation before resetting to defaults", async () => {
+    let deleted = false;
+    mockFetch({
+      ...RULES_ROUTES,
+      "GET /api/v1/rules/acme/api": () =>
+        deleted ? DEFAULT_RULE : { ...DEFAULT_RULE, is_default: false, custom_instructions: "x", updated_at: "t" },
+      "DELETE /api/v1/rules/acme/api": () => {
+        deleted = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<Rules />, { path: "/rules" });
+
+    await user.click(await screen.findByRole("button", { name: "Reset to defaults" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/will be deleted/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Reset" }));
+    await waitFor(() => expect(deleted).toBe(true));
+    expect(await screen.findByText("Using defaults")).toBeInTheDocument();
+  });
+});
+
+describe("Rules documents popup", () => {
+  async function openDocuments(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole("button", { name: "Manage documents" }));
+    return screen.getByRole("dialog", { name: "Architecture & requirements docs" });
+  }
+
   it.each([
     ["cached", "Gemini cache ready"],
     ["pending", "Will be cached on next review"],
@@ -166,15 +238,16 @@ describe("Rules documents panel", () => {
       ...RULES_ROUTES,
       "GET /api/v1/rules/acme/api/documents": docList(status, status === "none" ? [] : [DOC]),
     });
+    const user = userEvent.setup();
     renderWithProviders(<Rules />, { path: "/rules" });
-    expect(await screen.findByText(label)).toBeInTheDocument();
+    const dialog = await openDocuments(user);
+    expect(await within(dialog).findByText(label)).toBeInTheDocument();
   });
 
   it("builds the cache only on the last file of a batch", async () => {
     const uploads: string[] = [];
     mockFetch({
       ...RULES_ROUTES,
-      "GET /api/v1/rules/acme/api/documents": docList("none", []),
       "POST /api/v1/rules/acme/api/documents": (url: URL) => {
         uploads.push(url.search);
         return { ...DOC, cache_status: url.search ? "pending" : "cached", cache_error: null };
@@ -182,7 +255,8 @@ describe("Rules documents panel", () => {
     });
     const user = userEvent.setup();
     renderWithProviders(<Rules />, { path: "/rules" });
-    await screen.findByText("No documents");
+    const dialog = await openDocuments(user);
+    await within(dialog).findByText("No documents");
 
     await user.upload(fileInput(), [
       new File(["# a"], "a.md", { type: "text/markdown" }),
@@ -201,7 +275,8 @@ describe("Rules documents panel", () => {
     });
     const user = userEvent.setup();
     renderWithProviders(<Rules />, { path: "/rules" });
-    await screen.findByText("Will be cached on next review");
+    const dialog = await openDocuments(user);
+    await within(dialog).findByText("Will be cached on next review");
 
     await user.upload(fileInput(), new File(["# a"], "arch.md", { type: "text/markdown" }));
 
@@ -211,53 +286,33 @@ describe("Rules documents panel", () => {
   });
 });
 
-const EMOJI = /\p{Extended_Pictographic}/u;
-
-describe("Prompt recipe and golden prompt drawer", () => {
-  it("shows how the golden prompt, instructions and documents combine", async () => {
+describe("Golden prompt panel", () => {
+  it("shows the assembled prompt with this repo's saved instructions highlighted", async () => {
     mockFetch({
       ...RULES_ROUTES,
-      "GET /api/v1/rules/acme/api/documents": docList("cached", [DOC, { ...DOC, id: 2, filename: "reqs.pdf" }]),
+      "GET /api/v1/rules/acme/api": {
+        ...DEFAULT_RULE,
+        is_default: false,
+        custom_instructions: "- Idempotency keys on retries",
+        updated_at: "t",
+      },
+      "GET /api/v1/rules/acme/api/documents": docList("inline"),
     });
-    const user = userEvent.setup();
     renderWithProviders(<Rules />, { path: "/rules" });
 
-    const strip = await screen.findByRole("region", { name: "How every review is composed" });
-    expect(within(strip).getByText("Golden prompt")).toBeInTheDocument();
-    expect(within(strip).getByText("Not set, defaults apply")).toBeInTheDocument();
-    expect(await within(strip).findByText("2 files · Gemini cache ready")).toBeInTheDocument();
-    expect(await within(strip).findByText("Default")).toBeInTheDocument();
-
-    await user.type(screen.getByLabelText("Custom instructions"), "- Keep services isolated");
-    expect(within(strip).getByText("1 line · Concise · Security on")).toBeInTheDocument();
-    expect(within(strip).getByText("Unsaved")).toBeInTheDocument();
-    expect(strip.textContent).not.toMatch(EMOJI);
-  });
-
-  it("opens the assembled prompt with this repo's unsaved instructions highlighted", async () => {
-    mockFetch({ ...RULES_ROUTES, "GET /api/v1/rules/acme/api/documents": docList("inline") });
-    const user = userEvent.setup();
-    renderWithProviders(<Rules />, { path: "/rules" });
-
-    await user.type(await screen.findByLabelText("Custom instructions"), "- Idempotency keys on retries");
-    await user.click(screen.getByRole("button", { name: "Golden prompt: view full prompt" }));
-
-    const dialog = await screen.findByRole("dialog");
-    const slot = dialog.querySelector('mark[data-slot="custom_instructions"]');
+    expect(await screen.findByText("Appended to the end of this prompt.")).toBeInTheDocument();
+    const slot = document.querySelector('mark[data-slot="custom_instructions"]');
     expect(slot?.textContent).toContain("- Idempotency keys on retries");
-    expect(dialog.querySelector('mark[data-slot="verbosity_directive"]')?.textContent).toContain("Be concise.");
-    expect(within(dialog).getByText("arch.md")).toBeInTheDocument();
-    expect(within(dialog).getByText("Appended to the end of this prompt.")).toBeInTheDocument();
-    expect(within(dialog).getByText("Only admins can edit the golden prompt.")).toBeInTheDocument();
-    expect(within(dialog).queryByRole("button", { name: "Edit golden prompt" })).toBeNull();
-    expect(dialog.textContent).not.toMatch(EMOJI);
+    expect(document.querySelector('mark[data-slot="verbosity_directive"]')?.textContent).toContain("Be concise.");
+    expect(screen.getAllByText("arch.md").length).toBeGreaterThan(0);
+    expect(screen.getByText("Only admins can edit the golden prompt.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit golden prompt" })).toBeNull();
   });
 
-  it("lets an admin edit the golden prompt with validation before saving", async () => {
+  it("lets an admin edit the golden prompt inline with validation before saving", async () => {
     let saved: string | null = null;
     mockFetch({
       ...RULES_ROUTES,
-      "GET /api/v1/rules/acme/api/documents": docList("none", []),
       "PUT /api/v1/prompt": (_url: URL, init: RequestInit) => {
         saved = (JSON.parse(String(init.body)) as { template: string }).template;
         return promptFixture({
@@ -271,21 +326,19 @@ describe("Prompt recipe and golden prompt drawer", () => {
     const user = userEvent.setup();
     renderWithProviders(<Rules />, { path: "/rules", user: { ...testUser, is_admin: true } });
 
-    await user.click(await screen.findByRole("button", { name: "Golden prompt: view full prompt" }));
-    const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("button", { name: "Edit golden prompt" }));
-
-    expect(within(dialog).getByRole("note")).toHaveTextContent("Applies to every repository's reviews");
-    const editor = within(dialog).getByLabelText("Golden prompt");
-    const save = within(dialog).getByRole("button", { name: "Save golden prompt" });
+    await user.click(await screen.findByRole("button", { name: "Edit golden prompt" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("note")).toHaveTextContent("Applies to every repository's reviews");
+    const editor = screen.getByLabelText("Golden prompt");
+    const save = screen.getByRole("button", { name: "Save golden prompt" });
     expect(save).toBeDisabled(); // unchanged
 
     await user.clear(editor);
     await user.type(editor, "Review strictly. reviewpilot-meta ");
-    expect(within(dialog).getByText(/Missing \{\{custom_instructions\}\}/)).toBeInTheDocument();
+    expect(screen.getByText(/Missing \{\{custom_instructions\}\}/)).toBeInTheDocument();
     expect(save).toBeDisabled();
 
-    await user.click(within(dialog).getByRole("button", { name: /^\{\{custom_instructions\}\}/ }));
+    await user.click(screen.getByRole("button", { name: /^\{\{custom_instructions\}\}/ }));
     await waitFor(() => expect(save).toBeEnabled());
     await user.click(save);
 
@@ -296,20 +349,17 @@ describe("Prompt recipe and golden prompt drawer", () => {
   it("shows the server's reasons when a save is rejected", async () => {
     mockFetch({
       ...RULES_ROUTES,
-      "GET /api/v1/rules/acme/api/documents": docList("none", []),
       "PUT /api/v1/prompt": () =>
         new Response(JSON.stringify({ detail: { errors: ["Server says no."] } }), { status: 422 }),
     });
     const user = userEvent.setup();
     renderWithProviders(<Rules />, { path: "/rules", user: { ...testUser, is_admin: true } });
 
-    await user.click(await screen.findByRole("button", { name: "Golden prompt: view full prompt" }));
-    const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("button", { name: "Edit golden prompt" }));
-    await user.type(within(dialog).getByLabelText("Golden prompt"), " More.");
-    await user.click(within(dialog).getByRole("button", { name: "Save golden prompt" }));
+    await user.click(await screen.findByRole("button", { name: "Edit golden prompt" }));
+    await user.type(screen.getByLabelText("Golden prompt"), " More.");
+    await user.click(screen.getByRole("button", { name: "Save golden prompt" }));
 
-    expect(await within(dialog).findByText("Server says no.")).toBeInTheDocument();
+    expect(await screen.findByText("Server says no.")).toBeInTheDocument();
   });
 });
 
