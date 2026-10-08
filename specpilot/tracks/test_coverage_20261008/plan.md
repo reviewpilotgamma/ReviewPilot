@@ -71,9 +71,9 @@ for manual verification. The verification steps are listed for the user to run a
 - `insights.py:265` and `:305` look unreachable (incremental batches only hold reviews newer than the watermark,
   and rebuilds pass no previous snapshot). They were left alone because removing code is out of scope.
 
-## Phase 4: Documentation
+## Phase 4: Documentation [checkpoint: b696159]
 
-- [ ] Task 4.1: README testing section lists `pytest --cov` and `npm run coverage` and the 95% floor.
+- [x] Task 4.1 [b696159]: README testing section lists `pytest --cov` and `npm run coverage` and the 95% floor.
 
 ## Manual Verification
 

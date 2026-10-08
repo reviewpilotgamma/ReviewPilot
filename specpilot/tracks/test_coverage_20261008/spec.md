@@ -40,10 +40,10 @@ This track adds tests until both sides clear 95% with some margin, and makes the
 
 ## Acceptance Criteria
 
-- [ ] Backend: `pytest --cov` passes with total line coverage ≥ 95% (target ≥ 97%) and `fail_under = 95` enforced.
-- [ ] Frontend: `npm run coverage` passes with lines and statements ≥ 95% and thresholds enforced.
-- [ ] All tests pass on both sides; lint and typecheck are clean.
-- [ ] README documents the coverage commands.
+- [x] Backend: `pytest --cov` passes with total line coverage ≥ 95% (target ≥ 97%) and `fail_under = 95` enforced.
+- [x] Frontend: `npm run coverage` passes with lines and statements ≥ 95% and thresholds enforced.
+- [x] All tests pass on both sides; lint and typecheck are clean.
+- [x] README documents the coverage commands.
 
 ## Out of Scope
 

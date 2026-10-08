@@ -2,7 +2,7 @@
   "track_id": "test_coverage_20261008",
   "title": "Raise test coverage above 95%",
   "type": "chore",
-  "status": "in progress",
+  "status": "done",
   "created": "2026-10-08",
   "spec": "spec.md",
   "plan": "plan.md"
