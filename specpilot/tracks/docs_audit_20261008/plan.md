@@ -29,7 +29,7 @@
 | Index | `artifacts/README.md` (new) | Folder index |
 | Links | `README.md`, `specpilot/product.md` | Point at `artifacts/` |
 
-## Phase 1: Documents [checkpoint: pending]
+## Phase 1: Documents [checkpoint: 02c3cad]
 
 - [x] **1.1 Remove duplicates and rewrite the architecture.** `6263562` Move Problem / Why / Key strengths from the
   Architecture docx into `ARCHITECTURE.md`, rewrite the rest from the code, delete both `.docx` files.
