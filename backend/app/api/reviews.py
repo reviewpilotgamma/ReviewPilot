@@ -48,14 +48,24 @@ def list_reviews(
     return Page[ReviewListItem](items=items, total=total, page=page, page_size=page_size)
 
 
+SEARCH_SORT_COLUMNS = {"created_at", "score", "pr_number"}
+_search_cache: dict[tuple[str, str], list[dict]] = {}
+
+
 @router.get("/search")
 def search_reviews(db: DbSession, term: str, order_by: str = "created_at") -> list[dict]:
     """Free-text search over PR titles and summaries."""
-    sql = (
-        "SELECT id, repo_full_name, pr_number, pr_title, verdict, score FROM pr_reviews "
-        f"WHERE pr_title LIKE '%{term}%' OR summary LIKE '%{term}%' ORDER BY {order_by} DESC"
-    )
-    return [dict(row._mapping) for row in db.execute(text(sql))]
+    if order_by not in SEARCH_SORT_COLUMNS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unsupported sort column")
+    key = (term, order_by)
+    if key not in _search_cache:
+        sql = (
+            "SELECT id, repo_full_name, pr_number, pr_title, verdict, score FROM pr_reviews "
+            f"WHERE pr_title LIKE :pattern OR summary LIKE :pattern ORDER BY {order_by} DESC"
+        )
+        rows = db.execute(text(sql), {"pattern": f"%{term}%"})
+        _search_cache[key] = [dict(row._mapping) for row in rows]
+    return _search_cache[key]
 
 
 @router.get("/{review_id}", response_model=ReviewDetail)
