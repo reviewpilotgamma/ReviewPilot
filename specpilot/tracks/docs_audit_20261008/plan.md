@@ -29,7 +29,7 @@
 | Index | `artifacts/README.md` (new) | Folder index |
 | Links | `README.md`, `specpilot/product.md` | Point at `artifacts/` |
 
-## Phase 1: Documents
+## Phase 1: Documents [checkpoint: pending]
 
 - [x] **1.1 Remove duplicates and rewrite the architecture.** `6263562` Move Problem / Why / Key strengths from the
   Architecture docx into `ARCHITECTURE.md`, rewrite the rest from the code, delete both `.docx` files.
@@ -37,7 +37,18 @@
 - [x] **1.3 Requirements.** `12bd908` Update status, add new rows, fix the auth and seed statements.
 - [x] **1.4 Historical docs.** `a9d6002` `implementation.md` banner, changes table and in-place fixes; `Application-Prompt.md`
   note; `TODO.md` status.
-- [~] **1.5 Index and links.** `artifacts/README.md`; fix links in `README.md` and `specpilot/product.md`; check every
+- [x] **1.5 Index and links.** `3ac1aef` (the `README.md` line landed in `529ab72`, which shared the git index) `artifacts/README.md`; fix links in `README.md` and `specpilot/product.md`; check every
   relative link resolves.
 
 Gate (docs only, no code touched): every relative Markdown link resolves; spot-check claims against the source.
+
+## Implementation notes
+
+- Duplicates: both `.docx` files duplicated the Markdown. The Architecture copy's Problem / Why ReviewPilot / Key
+  strengths sections were moved into `ARCHITECTURE.md` §1–3 before deletion.
+- Requirements: FR-G6 is recorded as Partial. `@review` on a plain issue is ignored and logged, but no explanatory
+  comment is posted, unlike what the requirement asks.
+- `implementation.md` §3.1 and §10 became pointers (to `.env.example`/`ARCHITECTURE.md` §11 and `API.md`) so the
+  settings and endpoint lists are documented in one place.
+- Link check: every relative Markdown link and anchor in `README.md`, `specpilot/*.md` and `artifacts/*.md` resolves.
+- Phase verification pause skipped: the user asked for implementation without waiting for approval.
