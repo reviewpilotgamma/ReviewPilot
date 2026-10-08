@@ -33,7 +33,7 @@ const repoPath = (fullName: string) =>
 export const authApi = {
   me: () => http.get<User>("/auth/me"),
   logout: () => http.post<void>("/auth/logout"),
-  devLogin: () => http.post<User>("/auth/dev-login"),
+  login: (username: string, password: string) => http.post<User>("/auth/login", { username, password }),
 };
 
 export const githubApi = {

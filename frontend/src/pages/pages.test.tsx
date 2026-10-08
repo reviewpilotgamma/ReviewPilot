@@ -6,7 +6,6 @@ import { describe, expect, it } from "vitest";
 import { routes } from "@/App";
 import History from "@/pages/History";
 import Insights from "@/pages/Insights";
-import Landing from "@/pages/Landing";
 import Rules from "@/pages/Rules";
 import { promptFixture } from "@/test/prompt";
 import { mockFetch, renderWithProviders, testUser } from "@/test/utils";
@@ -48,23 +47,6 @@ const REVIEW: ReviewDetail = {
   review_context: null,
   my_feedback: null,
 };
-
-const APP_LOCAL = {
-  configured: false,
-  slug: "",
-  name: "ReviewPilot",
-  install_url: "",
-  html_url: "",
-  local_mode: true,
-};
-
-describe("Landing page", () => {
-  it("offers local sign-in when the API is in local mode", async () => {
-    mockFetch({ "GET /api/v1/github/app": APP_LOCAL });
-    renderWithProviders(<Landing />, { user: null });
-    expect(await screen.findAllByRole("button", { name: "Continue locally" })).toHaveLength(2);
-  });
-});
 
 describe("Removed Run review route", () => {
   it("shows Not Found at /run", async () => {

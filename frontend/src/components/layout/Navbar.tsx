@@ -1,11 +1,13 @@
 import { LogOut, Menu } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Select } from "@/components/ui/Controls";
+import { InstallAppButton } from "./GithubConnect";
 import { useAuth, useWorkspace } from "@/hooks/useAuth";
 
 export function Navbar({ title, onMenu }: { title: string; onMenu: () => void }) {
   const { user, logout } = useAuth();
-  const { repos, selectedRepo, setSelectedRepo } = useWorkspace();
+  const { installations, isLoading: installsLoading, repos, selectedRepo, setSelectedRepo } = useWorkspace();
+  const installed = Boolean(user?.github_linked) && installations.length > 0;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +44,14 @@ export function Navbar({ title, onMenu }: { title: string; onMenu: () => void })
           </Select>
         )}
 
+        {!installsLoading && (
+          <InstallAppButton
+            size="sm"
+            variant={installed ? "secondary" : "primary"}
+            label={installed ? "Manage GitHub App" : "Install GitHub App"}
+          />
+        )}
+
         <div className="relative" ref={menuRef}>
           <button
             className="flex items-center gap-2 rounded-full border border-border p-0.5 pr-3 text-sm text-ink hover:border-violet/50"
@@ -63,6 +73,7 @@ export function Navbar({ title, onMenu }: { title: string; onMenu: () => void })
               <div className="px-3 py-2 text-xs text-muted">
                 Signed in as <span className="font-medium text-ink">{user?.username}</span>
                 {user?.is_admin && <span className="ml-1 text-violet">(admin)</span>}
+                {user?.github_login && <span className="block">GitHub: @{user.github_login}</span>}
               </div>
               <button
                 role="menuitem"

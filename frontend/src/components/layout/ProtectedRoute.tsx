@@ -13,6 +13,6 @@ export function ProtectedRoute() {
   }, [redirecting, login, location.pathname, location.search]);
 
   if (isLoading) return <FullPageSpinner />;
-  if (!user) return <FullPageSpinner label="Redirecting to GitHub sign-in…" />;
+  if (!user) return <FullPageSpinner label="Redirecting to sign in…" />;
   return <Outlet />;
 }

@@ -1,13 +1,14 @@
 import { useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { Check, Copy, ExternalLink, GitPullRequest, RefreshCw, Sparkles } from "lucide-react";
+import { Check, Copy, GitPullRequest, RefreshCw, ShieldAlert, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { ConnectGithubButton, InstallAppButton } from "@/components/layout/GithubConnect";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SegmentedControl, Toggle } from "@/components/ui/Controls";
-import { useToast, useWorkspace } from "@/hooks/useAuth";
+import { useAuth, useToast, useWorkspace } from "@/hooks/useAuth";
 import { useEvents } from "@/hooks/useEvents";
 import { useAppInfo, useInstallations } from "@/hooks/useInstallations";
 import { useReviews } from "@/hooks/useReviews";
@@ -56,6 +57,7 @@ function CopyButton({ text }: { text: string }) {
 
 function InstallStep() {
   const { data: app } = useAppInfo();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   useInstallations({ pollWhileEmpty: true });
@@ -71,26 +73,33 @@ function InstallStep() {
 
   return (
     <div className="space-y-4">
+      <div className="flex gap-3 rounded-xl border border-amber/40 bg-amber-soft p-4">
+        <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber" />
+        <div className="text-sm">
+          <p className="font-medium text-ink">Install the GitHub App first to see your data on the dashboard.</p>
+          <p className="mt-1 text-muted">
+            {user?.github_linked
+              ? `Your GitHub account @${user.github_login ?? ""} is connected, but it can't see any ReviewPilot installation yet.`
+              : "Your dashboard stays empty until you install the ReviewPilot GitHub App and connect your GitHub account."}
+          </p>
+        </div>
+      </div>
       <p className="text-sm text-muted">
         Install the ReviewPilot GitHub App on the repositories you want reviewed. ReviewPilot only sees repositories
         you grant it access to.
       </p>
       <div className="flex flex-wrap gap-2">
-        <Button
-          icon={<ExternalLink className="h-4 w-4" />}
-          disabled={!app?.install_url}
-          onClick={() => app?.install_url && window.open(app.install_url, "_blank", "noopener,noreferrer")}
-        >
-          Install GitHub App
-        </Button>
-        <Button variant="secondary" loading={refreshing} icon={<RefreshCw className="h-4 w-4" />} onClick={refresh}>
-          I've installed it — refresh
-        </Button>
+        <InstallAppButton />
+        <ConnectGithubButton />
+        {user?.github_linked && (
+          <Button variant="ghost" loading={refreshing} icon={<RefreshCw className="h-4 w-4" />} onClick={refresh}>
+            Refresh
+          </Button>
+        )}
       </div>
-      {!app?.install_url && (
+      {!app?.configured && (
         <p className="text-xs text-amber">The GitHub App is not configured yet. Ask an admin to complete Settings.</p>
       )}
-      <p className="text-xs text-muted">This page checks for new installations every 10 seconds.</p>
     </div>
   );
 }

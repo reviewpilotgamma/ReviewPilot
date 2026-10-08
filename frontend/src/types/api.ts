@@ -14,12 +14,17 @@ export interface Page<T> {
   page_size: number;
 }
 
+export type Role = "dev" | "admin";
+
 export interface User {
   id: number;
-  github_id: number;
   username: string;
+  role: Role;
   avatar_url: string | null;
   email: string | null;
+  github_id: number | null;
+  github_login: string | null;
+  github_linked: boolean;
   is_admin: boolean;
 }
 
@@ -29,7 +34,6 @@ export interface AppInfo {
   name: string;
   install_url: string;
   html_url: string;
-  local_mode: boolean;
 }
 
 export interface Repo {

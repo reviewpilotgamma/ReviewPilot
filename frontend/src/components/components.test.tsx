@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MarkdownView } from "@/components/diff/MarkdownView";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -8,6 +8,7 @@ import { FeedbackWidget } from "@/components/reviews/FeedbackWidget";
 import { ReviewedWith } from "@/components/reviews/ReviewedWith";
 import { StatusBadge, VerdictBadge } from "@/components/ui/Badge";
 import { MetricCard } from "@/components/ui/MetricCard";
+import { Dialog, Modal } from "@/components/ui/Overlay";
 import { mockFetch, renderWithProviders } from "@/test/utils";
 
 describe("MarkdownView", () => {
@@ -60,7 +61,7 @@ describe("ProtectedRoute", () => {
   it("redirects anonymous users to login with the current path", async () => {
     const { auth } = renderWithProviders(<ProtectedRoute />, { user: null, path: "/rules?repo=a" });
     await waitFor(() => expect(auth.login).toHaveBeenCalledWith("/rules?repo=a"));
-    expect(screen.getByText(/Redirecting to GitHub/)).toBeInTheDocument();
+    expect(screen.getByText(/Redirecting to sign in/)).toBeInTheDocument();
   });
 });
 
@@ -158,5 +159,27 @@ describe("ReviewedWith", () => {
     expect(line).not.toHaveTextContent("document");
     rerender(<ReviewedWith context={null} />);
     expect(screen.queryByLabelText("Reviewed with")).toBeNull();
+  });
+});
+
+describe("Dialog", () => {
+  it("closes only the topmost dialog on Escape", async () => {
+    const closeDialog = vi.fn();
+    const closeConfirm = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <>
+        <Dialog open onClose={closeDialog} title="Edit things" description="Details" footer={<button>Done</button>}>
+          Body
+        </Dialog>
+        <Modal open onClose={closeConfirm} title="Discard?" actions={<button>Discard</button>}>
+          Sure?
+        </Modal>
+      </>,
+    );
+    expect(screen.getByRole("dialog", { name: "Edit things" })).toHaveTextContent("Details");
+    await user.keyboard("{Escape}");
+    expect(closeConfirm).toHaveBeenCalledTimes(1);
+    expect(closeDialog).not.toHaveBeenCalled();
   });
 });

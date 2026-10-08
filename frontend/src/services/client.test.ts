@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { mockFetch } from "@/test/utils";
-import { api, ApiError, buildQuery, http, loginUrl, onUnauthorized } from "./client";
+import { api, ApiError, buildQuery, githubConnectUrl, http, onUnauthorized } from "./client";
 
 describe("api client", () => {
   it("sends credentials and the CSRF header", async () => {
@@ -64,6 +64,7 @@ describe("api client", () => {
   it("builds query strings without empty values", () => {
     expect(buildQuery({ a: "1", b: undefined, c: "", d: 0, e: null })).toBe("?a=1&d=0");
     expect(buildQuery({})).toBe("");
-    expect(loginUrl("/rules?x=1")).toBe("/api/v1/auth/login?next=%2Frules%3Fx%3D1");
+    expect(githubConnectUrl()).toBe("/api/v1/auth/github/connect?mode=install");
+    expect(githubConnectUrl("authorize")).toBe("/api/v1/auth/github/connect?mode=authorize");
   });
 });

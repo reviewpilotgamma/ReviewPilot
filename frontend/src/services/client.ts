@@ -33,8 +33,9 @@ export function buildQuery(params?: QueryParams): string {
   return query ? `?${query}` : "";
 }
 
-export function loginUrl(next?: string): string {
-  return `${API_BASE}/auth/login${buildQuery({ next })}`;
+/** Full-page navigation that installs the GitHub App (or authorizes, when already installed) and links GitHub. */
+export function githubConnectUrl(mode: "install" | "authorize" = "install"): string {
+  return `${API_BASE}/auth/github/connect${buildQuery({ mode })}`;
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
