@@ -119,6 +119,7 @@ def create_app() -> FastAPI:
             "status": "ok" if db_ok else "degraded",
             "db": db_ok,
             "worker": "running" if worker.running else "stopped",
+            "version": app.version,
         }
 
     return app
