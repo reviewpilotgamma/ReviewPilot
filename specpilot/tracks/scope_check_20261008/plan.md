@@ -22,8 +22,8 @@
 
 ## Phase 1: Backend
 
-- [~] **1.1 Prompt.** Scope Check section and rules in `OUTPUT_FORMAT`; batch note; description and rules for the merge. Gate: `ruff check .`, `pytest`.
-- [ ] **1.2 Context and fallback.** `manifest` on `build_pr_context`, passed from `handle_review`; "Scope Check" in `MERGED_SECTIONS`. Gate: `ruff check .`, `pytest`.
+- [x] **1.1 Prompt.** `eee10db` Scope Check section and rules in `OUTPUT_FORMAT`; batch note; description and rules for the merge. Gate: `ruff check .`, `pytest`.
+- [~] **1.2 Context and fallback.** `manifest` on `build_pr_context`, passed from `handle_review`; "Scope Check" in `MERGED_SECTIONS`. Gate: `ruff check .`, `pytest`.
 - [ ] **1.3 Tests.** Prompt, context, merge, fallback and parser tests. Gate: `ruff check .`, `pytest`.
 
 ## Phase 2: Frontend

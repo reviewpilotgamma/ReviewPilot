@@ -72,7 +72,9 @@ MERGE_RESERVE_SECONDS = 120.0
 MIN_BATCH_PHASE_RATIO = 0.6
 MAX_LISTED_FILES = 50
 FALLBACK_SUMMARY = "This PR was reviewed in {total} parts; the combined summary was generated automatically."
-MERGED_SECTIONS = ("Architectural Findings", "Specific Recommendations", "What Looks Solid")
+MERGED_SECTIONS = ("Scope Check", "Architectural Findings", "Specific Recommendations", "What Looks Solid")
+# Left out of a code-joined merge when no part has it (reviews from a custom prompt without a scope check).
+OPTIONAL_SECTIONS = {"Scope Check"}
 
 
 @dataclass(frozen=True)
@@ -154,6 +156,8 @@ def fallback_merge(parts: Sequence[tuple[int, ParsedReview]], total: int) -> Par
     sections = [f"### Executive Summary\n{summary}"]
     for title in MERGED_SECTIONS:
         chunks = [f"_Part {n} of {total}_\n\n{text}" for n, p in parts if (text := _section(p.body, title))]
+        if not chunks and title in OPTIONAL_SECTIONS:
+            continue
         sections.append(f"### {title}\n" + ("\n\n".join(chunks) if chunks else "_None._"))
     verdict = worst_verdict(*(p.verdict for _, p in parts))
     return ParsedReview(
@@ -541,7 +545,13 @@ async def handle_review(ctx: JobContext) -> None:
         batch_diff = plan.batches[0].text if plan.filtered else diff_for_prompt
         result = await gemini.generate(
             system_prompt,
-            build_pr_context(pr, ctx.owner, ctx.repo, batch_diff),
+            build_pr_context(
+                pr,
+                ctx.owner,
+                ctx.repo,
+                batch_diff,
+                manifest=[(f.path, f.additions, f.deletions) for f in plan.files if f.path not in plan.filtered],
+            ),
             cached_content=cached,
             inline_documents=inline_docs,
         )
