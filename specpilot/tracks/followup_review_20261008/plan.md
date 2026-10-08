@@ -68,7 +68,7 @@
 - [x] **4.5** `38e84d4` Update the README's PR trigger table: push in auto mode, and `@review` after a push.
 
 ### Phase 5: Live verification
-- [~] **5.1** In the `ReviewPilot-demo` worktree, branch `demo/followup` from `demo/base`.
+- [x] **5.1** Done on existing PR #9 (`demo/sql-injection`) instead of a new branch, as the user asked. Pushed `509ea97` (fixes the SQL injection, keeps pagination and access scope, adds an unbounded cache); GitHub did not sync the PR until an empty commit `960ce6d`. The push-triggered follow-up reported Fixed: SQL injection; Still open: pagination, access scope; New: unbounded cache. Verdict critical 3.5 → warning 6.5; stored with `trigger=push`, `previous_review_id` set. Note: the first review predates `head_sha`, so the headline reads "the previous review". Deviation: "Follow-up Status" was not added to `MERGED_SECTIONS`, because batch reviews never produce it; the code-joined fallback shows `FOLLOWUP_UNAVAILABLE_NOTE` instead. In the `ReviewPilot-demo` worktree, branch `demo/followup` from `demo/base`.
   - First commit: add an endpoint with two clear issues, an `httpx` call without a timeout and a hardcoded
     secret.
   - Open a PR against `demo/base` with a neutral description. Wait for the first review.
