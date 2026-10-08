@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import text
 
 from app.api.deps import Accessible, CurrentUser, DbSession, csrf_protect, scoped_repos
 from app.models import PRReview
@@ -45,6 +46,16 @@ def list_reviews(
         db, repos, filters, page=page, page_size=page_size, sort_desc=sort.startswith("-")
     )
     return Page[ReviewListItem](items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get("/search")
+def search_reviews(db: DbSession, term: str, order_by: str = "created_at") -> list[dict]:
+    """Free-text search over PR titles and summaries."""
+    sql = (
+        "SELECT id, repo_full_name, pr_number, pr_title, verdict, score FROM pr_reviews "
+        f"WHERE pr_title LIKE '%{term}%' OR summary LIKE '%{term}%' ORDER BY {order_by} DESC"
+    )
+    return [dict(row._mapping) for row in db.execute(text(sql))]
 
 
 @router.get("/{review_id}", response_model=ReviewDetail)
