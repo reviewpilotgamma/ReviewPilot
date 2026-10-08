@@ -952,8 +952,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return res.status === 204 ? (undefined as T) : res.json();
 }
 ```
-- One typed module per resource (`rules.ts`, `reviews.ts`, ...) mirroring §10.
-- `types/api.ts` mirrors §10.1 exactly (string-literal unions for enums).
+- One typed module per resource (`rules.ts`, `reviews.ts`, ...) mirroring [`API.md`](API.md).
+- `types/api.ts` mirrors the backend schemas in `backend/app/schemas/` exactly (string-literal unions for enums).
 
 ### 13.4 State
 - **TanStack Query** for all server state. Query keys: `["me"]`, `["installations"]`, `["rules"]`, `["rule", repo]`, `["reviews", filters]`, `["review", id]`, `["metrics", repo, days]`, `["events", filters]`, `["settings"]`, `["replies"]`, `["presets"]`, `["app"]`.
@@ -1043,7 +1043,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 - Section **Gemini**: API key (masked), Model (text input with suggestions `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro`), and a "Validate key" button → shows ok/error.
 - Section **Canned replies**: four textareas (welcome, plan, error, empty_diff) with a placeholder legend (`{author}`, `{reason}`, `{app_name}`).
 - Non-admins see everything read-only, with a banner: "Only admins can change settings."
-- Secret inputs show the masked value. Typing replaces it. Leaving it untouched sends the masked value, which the backend ignores (§10.1).
+- Secret inputs show the masked value. Typing replaces it. Leaving it untouched sends the masked value, which the backend ignores (see `PUT /settings` in [`API.md`](API.md)).
 
 ### 13.8 Shared UI components (behavior details)
 - `VerdictBadge`: passed → emerald "Passed"; warning → amber "Warning"; critical → rose "Critical Risk".
@@ -1197,7 +1197,7 @@ Tasks: `github_user.py`, `auth.py` routes, `deps.py`, `access.py`, `GET /github/
 
 ### Phase 5 — Data APIs
 Tasks: `rules.py`, `reviews.py` (+ feedback), `metrics.py` (service + routes), `GET /webhooks/events`, `settings.py` + `config_store.py`.
-**Accept:** all API test files pass. OpenAPI docs at `/docs` show every endpoint in §10.
+**Accept:** all API test files pass. OpenAPI docs at `/docs` show every endpoint in [`API.md`](API.md).
 
 ### Phase 6 — Frontend foundation
 Tasks: Vite + TS + Tailwind scaffold; tokens; client and types; AuthContext/WorkspaceContext; router; AppShell (Sidebar/Navbar); UI kit components; Landing page.

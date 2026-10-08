@@ -35,9 +35,9 @@
   Architecture docx into `ARCHITECTURE.md`, rewrite the rest from the code, delete both `.docx` files.
 - [x] **1.2 API reference.** `5e213e8` Write `artifacts/API.md` from the routers and `deps.py`.
 - [x] **1.3 Requirements.** `12bd908` Update status, add new rows, fix the auth and seed statements.
-- [~] **1.4 Historical docs.** `implementation.md` banner, changes table and in-place fixes; `Application-Prompt.md`
+- [x] **1.4 Historical docs.** `a9d6002` `implementation.md` banner, changes table and in-place fixes; `Application-Prompt.md`
   note; `TODO.md` status.
-- [ ] **1.5 Index and links.** `artifacts/README.md`; fix links in `README.md` and `specpilot/product.md`; check every
+- [~] **1.5 Index and links.** `artifacts/README.md`; fix links in `README.md` and `specpilot/product.md`; check every
   relative link resolves.
 
 Gate (docs only, no code touched): every relative Markdown link resolves; spot-check claims against the source.
