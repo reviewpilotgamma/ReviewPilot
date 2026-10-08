@@ -41,6 +41,12 @@
   - Delete `PromptDrawer.tsx`, `PromptRecipe.tsx`; update `pages.test.tsx` (open popups before interacting,
     sidebar autosave test, discard confirm test, golden prompt inline).
   - Quality gate: `npm run lint`, `npm run typecheck`, `npm test` in `frontend/`.
+- [x] 1.3 Golden prompt matches the sidebar height; Expand popup `80c87bb`
+  - `Dialog`: `size?: "md" | "xl"` (`max-w-3xl` / `max-w-6xl`).
+  - `GoldenPromptPanel`: `lg:absolute lg:inset-0` inside a `relative` grid cell (sidebar sets the row height),
+    scrolling body; Expand button renders the body and footer in an `xl` `Dialog` while the panel shows a
+    placeholder.
+  - `pages.test.tsx`: expand/close test.
 
 ## Implementation notes
 

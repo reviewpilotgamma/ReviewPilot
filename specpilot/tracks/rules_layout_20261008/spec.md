@@ -17,6 +17,8 @@ removed.
    **Edit golden prompt**, which switches the main area in place to the existing editor (placeholders,
    validation, server errors, Save, Cancel, Reset to default with confirmation). Non-admins see "Only admins can
    edit the golden prompt." The prompt reflects **saved** rules.
+   On large screens the panel matches the sidebar's height and the prompt scrolls inside it. An **Expand**
+   button opens the same content (view or editor, with its actions) in a wide popup; Esc or close returns.
 3. **Custom instructions option.** Status line "N lines" or "Not set, defaults apply". Click opens a large popup
    with preset chips, Custom instructions / Preview tabs, the 10,000-char counter, **Cancel** and **Save**. Save
    persists the instructions with the current saved settings, toasts, and closes the popup.
