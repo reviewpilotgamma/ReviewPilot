@@ -60,12 +60,12 @@
   - `tests/e2e/test_review_flows.py`: open, push, follow-up, using the harness (`add_pr`, `comments_for`).
 
 ### Phase 4: Dashboard
-- [~] **4.1** Add `head_sha?` and `previous_review_id?` to `frontend/src/types/api.ts`.
-- [ ] **4.2** `frontend/src/components/reviews/ReviewDrawer.tsx` shows the trigger text for `push` and follow-ups,
+- [x] **4.1** `ae0282e` Add `head_sha?` and `previous_review_id?` to `frontend/src/types/api.ts`.
+- [x] **4.2** `ae0282e` `frontend/src/components/reviews/ReviewDrawer.tsx` shows the trigger text for `push` and follow-ups,
   plus the "Previous review" link.
-- [ ] **4.3** `frontend/src/pages/History.tsx` shows a "Follow-up" badge.
-- [ ] **4.4** Vitest cases in `frontend/src/pages/pages.test.tsx`.
-- [ ] **4.5** Update the README's PR trigger table: push in auto mode, and `@review` after a push.
+- [x] **4.3** `ae0282e` `frontend/src/pages/History.tsx` shows a "Follow-up" badge.
+- [x] **4.4** `ae0282e` Vitest cases in `frontend/src/pages/pages.test.tsx`.
+- [~] **4.5** Update the README's PR trigger table: push in auto mode, and `@review` after a push.
 
 ### Phase 5: Live verification
 - [ ] **5.1** In the `ReviewPilot-demo` worktree, branch `demo/followup` from `demo/base`.

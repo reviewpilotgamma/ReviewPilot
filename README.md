@@ -32,6 +32,8 @@ Design documents live in [`artifacts/`](artifacts/README.md): [`ARCHITECTURE.md`
 | PR opened, repo in `auto` mode | Full architectural review |
 | PR opened, repo in `on_demand` mode | Welcome comment explaining `@review` |
 | Comment `@review [focus note]` | Review with the note injected (any mode) |
+| New commits pushed, repo in `auto` mode | Follow-up review posted as a new comment: what was fixed, what is still open, what is new |
+| Comment `@review` after new commits | Follow-up review (any mode); with no new commits since the last review, a full review |
 | Comment `@bot plan` | Pre-merge execution checklist (canned fallback if the model is unavailable) |
 
 ## 1. Register the GitHub App
