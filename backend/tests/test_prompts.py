@@ -125,7 +125,8 @@ def test_followup_directive_rules():
     for rule in ("### Follow-up Status", "**Fixed:**", "**Still open:**", "**New:**", "Never list fixed findings"):
         assert rule in directive
     assert "before Scope Check" in directive
-    assert "exactly once" in directive and "Never leave one out." in directive
+    assert "exactly once" in directive and "Never\nleave one out" in directive
+    assert "If that code is\nstill present, the finding is Still open" in directive
 
 
 

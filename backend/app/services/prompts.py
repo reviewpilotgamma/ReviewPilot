@@ -139,8 +139,10 @@ Add a ### Follow-up Status section immediately after the Executive Summary, befo
   - **Finding title** in `path/to/file.py`: what the new problem is.
 Write "None." under a label that has no items. Go through the previous review's Critical and Warning findings (the
 numbered checklist in the user content) one by one and list each, by its previous title, exactly once: under Fixed
-only if the current code no longer has the problem, otherwise under Still open. Never leave one out. Do not use the
-severity tags in this section; give the earlier severity in plain words, for example (was critical).
+only if the code that caused it was changed so the problem is gone, otherwise under Still open. If that code is
+still present, the finding is Still open even when other changes made it less harmful: say so in its detail. Never
+leave one out, and never mark one fixed because it is acceptable or by design. Do not use the severity tags in this
+section; give the earlier severity in plain words, for example (was critical).
 In Architectural Findings, list every problem present in the current code (all still open and new items), with
 severity tags; a still-open finding keeps at least its earlier severity unless the code made it less severe.
 Never list fixed findings there."""
