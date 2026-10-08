@@ -63,10 +63,19 @@ def _register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse({"detail": "GitHub API request failed"}, status_code=502)
 
     @app.exception_handler(Exception)
-    async def _unhandled(_: Request, exc: Exception) -> JSONResponse:
-        rid = request_id_var.get()
-        logger.exception("Unhandled error: %s", exc.__class__.__name__)
-        return JSONResponse({"detail": "Internal server error", "request_id": rid}, status_code=500)
+    async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
+        # Runs in the outermost middleware, after request_id_middleware has reset the context var.
+        rid = getattr(request.state, "request_id", None) or request_id_var.get()
+        token = request_id_var.set(rid)
+        try:
+            logger.exception("Unhandled error: %s", exc.__class__.__name__)
+        finally:
+            request_id_var.reset(token)
+        return JSONResponse(
+            {"detail": "Internal server error", "request_id": rid},
+            status_code=500,
+            headers={"X-Request-ID": rid},
+        )
 
 
 def create_app() -> FastAPI:
@@ -84,6 +93,7 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def request_id_middleware(request: Request, call_next):  # noqa: ANN001, ANN202
         rid = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
+        request.state.request_id = rid
         token = request_id_var.set(rid)
         try:
             response = await call_next(request)
