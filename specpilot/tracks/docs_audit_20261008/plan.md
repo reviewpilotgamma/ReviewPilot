@@ -33,8 +33,8 @@
 
 - [x] **1.1 Remove duplicates and rewrite the architecture.** `6263562` Move Problem / Why / Key strengths from the
   Architecture docx into `ARCHITECTURE.md`, rewrite the rest from the code, delete both `.docx` files.
-- [~] **1.2 API reference.** Write `artifacts/API.md` from the routers and `deps.py`.
-- [ ] **1.3 Requirements.** Update status, add new rows, fix the auth and seed statements.
+- [x] **1.2 API reference.** `5e213e8` Write `artifacts/API.md` from the routers and `deps.py`.
+- [~] **1.3 Requirements.** Update status, add new rows, fix the auth and seed statements.
 - [ ] **1.4 Historical docs.** `implementation.md` banner, changes table and in-place fixes; `Application-Prompt.md`
   note; `TODO.md` status.
 - [ ] **1.5 Index and links.** `artifacts/README.md`; fix links in `README.md` and `specpilot/product.md`; check every
