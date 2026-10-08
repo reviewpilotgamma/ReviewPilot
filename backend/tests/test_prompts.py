@@ -58,3 +58,24 @@ def test_output_format_rules(prompt):
     for rule in ("**File(s):**", "**Problem:**", "**Impact:**", "**What it does:**", "Do not use emoji."):
         assert rule in prompt
     assert "Do not cite line numbers." in prompt
+    for rule in ("### Scope Check", "**Unexpected changes:**", "**Described but not found:**"):
+        assert rule in prompt
+    assert "**No description to compare against.**" in prompt
+    assert "never add a finding, change the verdict, or lower the score" in prompt
+
+
+def test_merge_prompt_owns_described_but_not_found():
+    assert "Write one Scope Check for the whole PR" in prompts.MERGE_SYSTEM_PROMPT
+    assert 'decide "Described but not\n  found"' in prompts.MERGE_SYSTEM_PROMPT
+
+
+def test_pr_context_lists_changed_files_only_when_given():
+    pr = PullRequest(7, "Title", "Fix typo", "bob", "main", "feat", "open", False, 1, 1, 2)
+    assert "Changed files:" not in build_pr_context(pr, "acme", "api", "d")
+    context = build_pr_context(pr, "acme", "api", "d", manifest=[("README.md", 1, 1), ("app/config.py", 3, 0)])
+    assert "Changed files:\n- README.md (+1/-1)\n- app/config.py (+3/-0)\n\nDiff:" in context
+
+
+def test_empty_description_is_marked():
+    pr = PullRequest(7, "Title", "  ", "bob", "main", "feat", "open", False, 1, 1, 1)
+    assert "Description:\n(no description)" in build_pr_context(pr, "acme", "api", "d")

@@ -3,6 +3,13 @@
 - **Overall risk:** Critical. Retries without idempotency keys can charge a customer twice.
 - **Main concern:** Non-idempotent retries in `app/payments.py`.
 
+### Scope Check
+- **Matches description:** Partly
+- **Unexpected changes:**
+  - `app/config.py`: raises the default pool size, which the description does not mention.
+- **Described but not found:**
+  - None.
+
 ### Architectural Findings
 - **Critical** · **Non-idempotent retries**
   - **File(s):** `app/payments.py`

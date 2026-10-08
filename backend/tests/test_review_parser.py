@@ -83,3 +83,11 @@ def test_findings_excerpt_uses_section_and_truncates():
     long = "### Architectural Findings\n" + ("line\n" * 400)
     excerpt = findings_excerpt(long, max_chars=40)
     assert len(excerpt) <= 42 and excerpt.endswith("…")
+
+
+def test_scope_check_does_not_affect_severity_counts():
+    md = SAMPLE.replace('<!-- reviewpilot-meta: {"score": 3.5, "verdict": "critical"} -->', "")
+    md = md.replace("- **Critical** ·", "- **Passed** ·")
+    md = md.replace("- **Warning** ·", "- **Passed** ·")
+    md = md.replace("- **Matches description:** Partly", "- **Matches description:** Partly **Critical** **Warning**")
+    assert parse_review(md).verdict == "passed"

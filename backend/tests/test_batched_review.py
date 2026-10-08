@@ -114,6 +114,8 @@ async def test_large_diff_is_batched_then_merged(mock_http, db, small_batches):
     assert "- a.py (+" in first and "- c.py (+" in first  # full file list for reference
     merge_content = json.loads(requests[-1].content)["contents"][0]["parts"][0]["text"]
     assert "Part 3 of 3" in merge_content and "Files: c.py" in merge_content
+    assert "omit **Described but not found**" in first
+    assert "Description:\nAdds retries" in merge_content
 
     body = posted(comment)
     assert "Summary for Merged." in body and "Partially reviewed" not in body
@@ -250,7 +252,16 @@ def test_enforce_verdict_floor_and_fallback_merge():
     assert (floored.verdict, floored.score) == ("warning", 7.9)
     joined = reviewer.fallback_merge([(1, parse_review(review_md())), (2, parse_review(review_md("critical", 2)))], 2)
     assert joined.verdict == "critical" and joined.score == 2.0
-    assert joined.body.count("### ") == 4
+    assert joined.body.count("### ") == 4  # no part has a Scope Check, so none is added
+
+
+def test_fallback_merge_keeps_scope_check():
+    scoped = review_md().replace(
+        "### Architectural Findings", "### Scope Check\n- **Unexpected changes:**\n  - `y.py`: unrelated.\n### Architectural Findings"
+    )
+    joined = reviewer.fallback_merge([(1, parse_review(scoped)), (2, parse_review(review_md()))], 2)
+    assert joined.body.count("### ") == 5
+    assert "### Scope Check\n_Part 1 of 2_\n\n- **Unexpected changes:**" in joined.body
 
 
 # --------------------------------------------------------------------------- filtering and limits
@@ -264,6 +275,8 @@ async def test_lockfiles_never_reach_the_prompt(mock_http, db, small_batches):
     sent = gemini.calls[0].request.content.decode()
     assert "package-lock.json" not in sent and "dist/x.js" not in sent
     assert "Not reviewed (generated or lockfiles): `package-lock.json`, `dist/x.js`" in posted(comment)
+    context = json.loads(sent)["contents"][0]["parts"][0]["text"]
+    assert "Changed files:\n- src/app.py (+" in context
 
 
 async def test_only_filtered_files_posts_empty_notice(mock_http, db, small_batches):
