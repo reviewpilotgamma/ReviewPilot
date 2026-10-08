@@ -38,11 +38,22 @@ const SAMPLE_COMMENT = `## ReviewPilot Architectural Audit
 **Verdict:** 🟡 Warning   ·   **Health score:** 6.8/10   ·   **Lines reviewed:** 214
 
 ### Executive Summary
-Adds retry logic to the payments client. Retries are bounded, but the charge call is not idempotent.
+- **What it does:** Adds retry logic to the payments client.
+- **Overall risk:** Moderate. Retries are bounded, but the charge call is not idempotent.
 
 ### Architectural Findings
-- **Warning** Non-idempotent retries — \`payments/client.py\`: send an idempotency key with each charge.
-- **Passed** Dependency direction — the client stays behind the \`PaymentsGateway\` interface.
+- **Warning** · **Non-idempotent retries**
+  - **File(s):** \`payments/client.py\`
+  - **Problem:** \`charge()\` is retried without an idempotency key.
+  - **Impact:** A retried request can charge the customer twice.
+- **Passed** · **Dependency direction**
+  - **File(s):** \`payments/client.py\`
+  - **Problem:** None. The client stays behind the \`PaymentsGateway\` interface.
+  - **Impact:** The gateway can be swapped without touching callers.
+
+### Specific Recommendations
+1. **Send an idempotency key with each charge** in \`payments/client.py\`
+   - Generate one key per charge and reuse it on every retry.
 
 ---
 _Triggered via ReviewPilot · Architecture Gatekeeper_`;
