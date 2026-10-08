@@ -17,4 +17,4 @@
 
 ## Phase 1: Banner
 
-- [~] **1.1 Drop the emoji.** Update the four files above. Gate: `ruff check .`, `pytest`, `npm run lint`, `npm run typecheck`, `npm test`.
+- [x] **1.1 Drop the emoji.** `a49e60c` Update the four files above. Gate: `ruff check .`, `pytest`, `npm run lint`, `npm run typecheck`, `npm test`.

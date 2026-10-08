@@ -2,6 +2,7 @@
 
 | Track | Type | Status | Created |
 | --- | --- | --- | --- |
+| [review_format_20261008](tracks/review_format_20261008/index.md) | feature | in progress | 2026-10-08 |
 | [banner_emoji_20261008](tracks/banner_emoji_20261008/index.md) | chore | in progress | 2026-10-08 |
 | [bot_events_20261008](tracks/bot_events_20261008/index.md) | feature | in progress | 2026-10-08 |
 | [lines_kpi_20261008](tracks/lines_kpi_20261008/index.md) | feature | in progress | 2026-10-08 |

@@ -12,11 +12,12 @@ MAX_MANIFEST_FILES = 500
 
 VERBOSITY_DIRECTIVES = {
     "concise": (
-        "Be concise: use short bullet points, at most ~5 findings, one or two sentences each. Skip minor issues."
+        "Be concise: at most ~5 findings, one short sentence per sub-bullet, at most 4 recommendations. "
+        "Skip minor issues."
     ),
     "detailed": (
-        "Be detailed: for each finding, trace the affected code path, explain the failure scenario, "
-        "reference the specific files/hunks, and give a concrete remediation."
+        "Be detailed: for each finding, trace the affected code path in Problem and the failure scenario in "
+        "Impact, and give each recommendation a concrete remediation naming the code to change."
     ),
 }
 
@@ -69,7 +70,41 @@ RULE_PRESETS: list[dict[str, str]] = [
     },
 ]
 
-REVIEW_SYSTEM_TEMPLATE = """You are ReviewPilot, a senior software architect reviewing a GitHub pull request.
+# Shared by the review and merge prompts. No literal braces: REVIEW_SYSTEM_TEMPLATE is passed through str.format.
+OUTPUT_FORMAT = """OUTPUT FORMAT — respond in GitHub-flavored Markdown with EXACTLY these sections, in this order.
+Every section is a bulleted or numbered list; never write paragraphs.
+
+### Executive Summary
+- **What it does:** one sentence.
+- **Overall risk:** one sentence.
+- **Main concern:** one sentence (omit this bullet if there are no Critical or Warning findings).
+
+### Architectural Findings
+One item per finding. The item starts with a severity tag, **Critical**, **Warning**, or **Passed**, then " · " and
+a short bold title, followed by exactly these sub-bullets:
+- **Critical** · **Short title**
+  - **File(s):** `path/to/file.py`, `path/to/other.py`
+  - **Problem:** what is wrong.
+  - **Impact:** why it matters.
+If there are no issues, write a single **Passed** item.
+
+### Specific Recommendations
+Numbered. Each item starts with a bold action and the file to change, followed by 1–2 sub-bullets on how:
+1. **Short action** in `path/to/file.py`
+   - How to do it.
+
+### What Looks Solid
+- **Short point** in `path/to/file.py`: why it is good.
+
+Formatting rules:
+- Copy file paths exactly as they appear in the diff and always wrap them in backticks. Never invent a path.
+- Wrap functions, classes, variables, endpoints, SQL, and config keys in backticks.
+- Do not cite line numbers.
+- Do not use emoji."""
+
+
+REVIEW_SYSTEM_TEMPLATE = (
+    """You are ReviewPilot, a senior software architect reviewing a GitHub pull request.
 Focus strictly on architectural concerns:
 - Module boundaries, decoupling, and dependency direction
 - Async lifecycles, database query patterns, and connection management
@@ -89,17 +124,9 @@ Verbosity: {verbosity_directive}
 Security Mode: {security_directive}
 Requester Note (from the developer who asked for the review): {requester_note}
 
-OUTPUT FORMAT — respond in GitHub-flavored Markdown with EXACTLY these sections, in this order:
-### Executive Summary
-2–4 sentences on what the PR does and its overall architectural risk.
-### Architectural Findings
-A list. Each item starts with a severity tag: **Critical**, **Warning**, or **Passed**,
-followed by a short title, the affected file(s), and the explanation.
-If there are no issues, write a single **Passed** item.
-### Specific Recommendations
-Numbered, actionable steps.
-### What Looks Solid
-Bullets of good decisions in this PR.
+"""
+    + OUTPUT_FORMAT
+    + """
 
 Scoring: give an architecture health score from 0.0 to 10.0 and a verdict:
 - "critical" if any Critical finding exists (score must be < 5.0),
@@ -109,6 +136,7 @@ Scoring: give an architecture health score from 0.0 to 10.0 and a verdict:
 As the VERY LAST line, output exactly:
 <!-- reviewpilot-meta: {{"score": <number>, "verdict": "<passed|warning|critical>"}} -->
 Do not add a top-level title; it is added by the system."""
+)
 
 PLAN_SYSTEM_TEMPLATE = """You are ReviewPilot, a senior software architect.
 Produce a concise execution checklist (GitHub task list using "- [ ]" items) that the reviewer/author
@@ -204,7 +232,8 @@ def build_batch_context(
     return f"{head}{note}{sep}{tail}"
 
 
-MERGE_SYSTEM_PROMPT = """You are ReviewPilot, a senior software architect.
+MERGE_SYSTEM_PROMPT = (
+    """You are ReviewPilot, a senior software architect.
 A large pull request was reviewed in several parts. You receive the partial reviews, each covering a different set
 of files. Merge them into ONE review of the whole pull request.
 
@@ -216,12 +245,9 @@ Rules:
 - Write one Executive Summary for the whole PR, not one per part.
 - Merge the recommendations into one numbered list without duplicates.
 
-OUTPUT FORMAT — GitHub-flavored Markdown with EXACTLY these sections, in this order:
-### Executive Summary
-### Architectural Findings
-Each item starts with a severity tag: **Critical**, **Warning**, or **Passed**.
-### Specific Recommendations
-### What Looks Solid
+"""
+    + OUTPUT_FORMAT
+    + """
 
 Scoring: give an architecture health score from 0.0 to 10.0 and a verdict:
 - "critical" if any Critical finding exists (score must be < 5.0),
@@ -231,6 +257,7 @@ Scoring: give an architecture health score from 0.0 to 10.0 and a verdict:
 As the VERY LAST line, output exactly:
 <!-- reviewpilot-meta: {"score": <number>, "verdict": "<passed|warning|critical>"} -->
 Do not add a top-level title; it is added by the system."""
+)
 
 
 def build_merge_content(

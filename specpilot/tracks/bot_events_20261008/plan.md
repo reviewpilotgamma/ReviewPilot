@@ -30,4 +30,4 @@
 ## Phase 2: Frontend and docs
 
 - [x] **2.1 Show bot events checkbox.** `e1d411d` Add `include_bot` to `EventFilters`, a `showBot` checkbox to Activity (reset paging on change). Vitest case for the request param. Gate: `npm run lint`, `npm run typecheck`, `npm test`.
-- [x] **2.2 Docs.** README note on the Activity default.
+- [x] **2.2 Docs.** `e9e3452` README note on the Activity default.
