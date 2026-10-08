@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { routes } from "@/App";
+import Activity from "@/pages/Activity";
 import Dashboard from "@/pages/Dashboard";
 import History from "@/pages/History";
 import Insights from "@/pages/Insights";
@@ -498,5 +499,19 @@ describe("Insights page", () => {
       ),
     );
     expect(await screen.findByText("Insights updated.")).toBeInTheDocument();
+  });
+});
+
+describe("Activity page", () => {
+  it("hides bot events by default and requests them when toggled", async () => {
+    const fetchMock = mockFetch({ "GET /api/v1/webhooks/events": [] });
+    const user = userEvent.setup();
+    renderWithProviders(<Activity />, { path: "/activity" });
+    await screen.findByText("No webhook events yet");
+    const eventCalls = () => fetchMock.mock.calls.map(([url]) => String(url)).filter((u) => u.includes("/webhooks/events"));
+    expect(eventCalls().every((u) => !u.includes("include_bot"))).toBe(true);
+
+    await user.click(screen.getByRole("checkbox", { name: "Show bot events" }));
+    await waitFor(() => expect(eventCalls().some((u) => u.includes("include_bot=true"))).toBe(true));
   });
 });

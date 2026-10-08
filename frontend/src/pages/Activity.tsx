@@ -82,12 +82,16 @@ export default function Activity() {
   const { repos } = useWorkspace();
   const [status, setStatus] = useState<EventStatus | "">("");
   const [repo, setRepo] = useState("");
+  const [showBot, setShowBot] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [older, setOlder] = useState<WebhookEvent[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [exhausted, setExhausted] = useState(false);
 
-  const filters = useMemo(() => ({ status: status || undefined, repo: repo || undefined, limit: PAGE }), [status, repo]);
+  const filters = useMemo(
+    () => ({ status: status || undefined, repo: repo || undefined, include_bot: showBot || undefined, limit: PAGE }),
+    [status, repo, showBot],
+  );
   const { data, isLoading, isError, refetch, dataUpdatedAt } = useEvents(filters);
 
   const resetPaging = () => {
@@ -127,7 +131,22 @@ export default function Activity() {
       }
       description={dataUpdatedAt ? `Updated ${new Date(dataUpdatedAt).toLocaleTimeString()}` : undefined}
       actions={
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <label
+            className="inline-flex items-center gap-2 text-sm text-muted"
+            title="ReviewPilot's own PR comments come back as webhooks and are ignored"
+          >
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-[var(--signal)]"
+              checked={showBot}
+              onChange={(event) => {
+                setShowBot(event.target.checked);
+                resetPaging();
+              }}
+            />
+            Show bot events
+          </label>
           <Select
             aria-label="Filter by status"
             value={status}

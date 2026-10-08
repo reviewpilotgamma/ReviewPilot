@@ -260,6 +260,7 @@ export interface EventFilters {
   repo?: string;
   limit?: number;
   before_id?: number;
+  include_bot?: boolean;
 }
 
 export interface Settings {

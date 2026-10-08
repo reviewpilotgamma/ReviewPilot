@@ -25,9 +25,9 @@
 ## Phase 1: Backend
 
 - [x] **1.1 API filter.** `86aa700` Add `BOT_SENDER_REASON`, the `include_bot` parameter, and the NULL-safe filter. Tests: hidden by default, shown with `include_bot=true`, human ignores and NULL-message events still listed. Gate: `ruff check .`, `pytest`.
-- [~] **1.2 Purge migration.** Add `0007_purge_bot_events` deleting `status = 'ignored' AND error_message = 'bot sender'`. Test that only bot rows are removed. Gate: `ruff check .`, `pytest`.
+- [x] **1.2 Purge migration.** `914fb55` Add `0007_purge_bot_events` deleting `status = 'ignored' AND error_message = 'bot sender'`. Test that only bot rows are removed. Gate: `ruff check .`, `pytest`.
 
 ## Phase 2: Frontend and docs
 
-- [ ] **2.1 Show bot events checkbox.** Add `include_bot` to `EventFilters`, a `showBot` checkbox to Activity (reset paging on change). Vitest case for the request param. Gate: `npm run lint`, `npm run typecheck`, `npm test`.
+- [~] **2.1 Show bot events checkbox.** Add `include_bot` to `EventFilters`, a `showBot` checkbox to Activity (reset paging on change). Vitest case for the request param. Gate: `npm run lint`, `npm run typecheck`, `npm test`.
 - [ ] **2.2 Docs.** README note on the Activity default.
