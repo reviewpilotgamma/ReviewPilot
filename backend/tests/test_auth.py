@@ -303,3 +303,14 @@ def test_linked_dev_sees_only_repos_their_github_account_reaches(client, mock_ht
     client.get("/api/v1/auth/callback", params={"code": "c", "state": state}, follow_redirects=False)
     installs = client.get("/api/v1/github/installations").json()
     assert [r["full_name"] for i in installs for r in i["repos"]] == ["acme/web"]
+
+
+def test_connect_install_resolves_slug_from_github_when_unset(client, mock_http, monkeypatch):
+    from app.api import github as github_api
+
+    monkeypatch.setenv("GITHUB_APP_SLUG", "")
+    reload_settings()
+    github_api._app_cache.clear()
+    mock_http.get(f"{GITHUB_API}/app").respond(200, json={"slug": "from-github", "name": "X"})
+    _sign_in(client)
+    assert _connect(client).startswith("https://github.com/apps/from-github/installations/new?state=")

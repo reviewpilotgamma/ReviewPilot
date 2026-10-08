@@ -31,6 +31,18 @@ async def _app_details() -> dict:
     return data
 
 
+async def app_slug() -> str:
+    """The configured slug, or the App's own slug from GitHub when ``GITHUB_APP_SLUG`` is unset."""
+    settings = get_settings()
+    if settings.GITHUB_APP_SLUG or not settings.github_app_configured:
+        return settings.GITHUB_APP_SLUG
+    try:
+        return (await _app_details()).get("slug") or ""
+    except ServiceError as exc:
+        logger.info("Could not fetch GitHub App slug: %s", exc)
+        return ""
+
+
 @router.get("/app", response_model=AppInfo)
 async def app_info() -> AppInfo:
     settings = get_settings()

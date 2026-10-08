@@ -14,6 +14,7 @@ from fastapi.responses import RedirectResponse
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import CurrentUser, DbSession, csrf_protect, is_admin
+from app.api.github import app_slug
 from app.core.config import get_settings
 from app.core.database import SessionLocal, utcnow
 from app.core.security import (
@@ -93,18 +94,19 @@ def _authorize_redirect(state: str) -> RedirectResponse:
 
 
 @router.get("/github/connect")
-def github_connect(request: Request, mode: Literal["install", "authorize"] = "install") -> RedirectResponse:
+async def github_connect(request: Request, mode: Literal["install", "authorize"] = "install") -> RedirectResponse:
     """Start linking the signed-in user's GitHub identity: install the App, or authorize when already installed."""
     if _session_user_id(request) is None:
         return RedirectResponse(_frontend("/login?next=/dashboard"), status.HTTP_302_FOUND)
     settings = get_settings()
-    if not settings.oauth_configured or (mode == "install" and not settings.GITHUB_APP_SLUG):
+    slug = await app_slug() if mode == "install" else ""
+    if not settings.oauth_configured or (mode == "install" and not slug):
         return RedirectResponse(_frontend(f"{AFTER_LINK}?github_error=not_configured"), status.HTTP_302_FOUND)
     state = secrets.token_urlsafe(32)
     if mode == "install":
         query = urlencode({"state": state})
         response = RedirectResponse(
-            f"https://github.com/apps/{settings.GITHUB_APP_SLUG}/installations/new?{query}", status.HTTP_302_FOUND
+            f"https://github.com/apps/{slug}/installations/new?{query}", status.HTTP_302_FOUND
         )
     else:
         response = _authorize_redirect(state)
