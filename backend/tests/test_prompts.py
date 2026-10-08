@@ -126,3 +126,28 @@ def test_followup_directive_rules():
         assert rule in directive
     assert "before Scope Check" in directive
     assert "exactly once" in directive and "Never leave one out." in directive
+
+
+
+@pytest.mark.parametrize(
+    "bullet",
+    [
+        "- **Warning** · **Broad exception swallowing**\n  - **File(s):** `a.py`",
+        "- **Warning**: Broad exception swallowing\n  - *Affected file(s)*: `a.py`",
+        "- **Warning** | Broad exception swallowing | `a.py` | details",
+        "- **Warning** Broad exception swallowing — `a.py`: details",
+    ],
+)
+def test_previous_findings_titles_across_formats(bullet):
+    md = f"### Architectural Findings\n- **Passed** · **Fine**\n{bullet}\n### Specific Recommendations\n1. x"
+    assert prompts.previous_findings(md) == [("warning", "Broad exception swallowing")]
+
+
+def test_previous_review_block_lists_checklist():
+    block = prompts.build_previous_review_block(
+        PREVIOUS_MD, head_sha=None, verdict="critical", score=3.5, changed_files=None
+    )
+    assert (
+        "Previous Critical and Warning findings to account for (each exactly once, under Fixed or Still open):\n"
+        "1. Hardcoded secret (was critical)\n\nFiles changed since"
+    ) in block
