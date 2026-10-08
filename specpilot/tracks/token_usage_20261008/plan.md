@@ -40,7 +40,7 @@ TS type), `ReviewsTable`, `History`.
   returns the merge call's tokens; `BatchedReview.tokens_used` = succeeded batches + merge; `handle_review` sets
   `PRReview(tokens_used=...)` on both paths. Tests: single call, batches + merge, merge fallback, failed batch
   excluded. Gate: `ruff check .`, `pytest`.
-- [~] **1.4 API field.** Add `tokens_used` to `ReviewListItem`. Test the list endpoint returns it (value and
+- [x] **1.4 API field.** `557699f` Add `tokens_used` to `ReviewListItem`. Test the list endpoint returns it (value and
   `null`). Gate: `ruff check .`, `pytest`.
 
 ## Phase 2: Tokens column on Review History
