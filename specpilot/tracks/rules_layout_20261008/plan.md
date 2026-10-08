@@ -21,12 +21,12 @@
 
 ## Phase 1 — Popup primitive and redesigned Rules page
 
-- [ ] 1.1 `Dialog` primitive
+- [x] 1.1 `Dialog` primitive `8454db0`
   - `Dialog({ open, onClose, title, description?, children, footer? })`: centered, `max-w-3xl`, `max-h-[90vh]`,
     header with close button, scrolling body, optional footer; uses `useDialog`.
   - `useDialog`: handle Escape only when the panel contains `document.activeElement`, so a confirm `Modal`
     stacked on a `Dialog` closes alone.
-- [ ] 1.2 Rules page redesign
+- [x] 1.2 Rules page redesign `20f453b`
   - `lib/rules.ts`: `toInput(rule)`, `formatBytes`, `CACHE_LABELS`.
   - `GoldenPromptPanel`: `PromptDrawer` content as an inline `glass` section; props `repo`, `form` (saved
     `RuleInput`), `docs`, `prompt` query, `isAdmin`, `onDirtyChange`. Copy/Edit actions in the header.
@@ -41,3 +41,10 @@
   - Delete `PromptDrawer.tsx`, `PromptRecipe.tsx`; update `pages.test.tsx` (open popups before interacting,
     sidebar autosave test, discard confirm test, golden prompt inline).
   - Quality gate: `npm run lint`, `npm run typecheck`, `npm test` in `frontend/`.
+
+## Implementation notes
+
+- 1.1: the `Dialog` change was committed inside `8454db0` (the concurrent credential-auth session committed while
+  it was staged); the code and its test are as planned.
+- 1.2: the Mode option "On-demand @review only" is shortened to "@review only" to fit the 320px sidebar.
+  Settings show `save.variables` while a save is pending, so a failed save falls back to the stored rule.
