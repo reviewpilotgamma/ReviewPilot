@@ -35,7 +35,7 @@
   - Tests in `tests/test_dispatcher.py`, with a new fixture `tests/fixtures/pull_request_synchronize.json`.
 
 ### Phase 3: Follow-up review
-- [~] **3.1 Prompt** in `backend/app/services/prompts.py`:
+- [x] **3.1 Prompt** `01de1d2` in `backend/app/services/prompts.py`:
   - `FOLLOWUP_DIRECTIVE`: the Follow-up Status section and its rules (no severity tags; Architectural Findings
     lists current issues only).
   - `build_previous_review_block(prev_markdown, sha, verdict, score, changed_files)`: takes the previous review's
@@ -43,7 +43,7 @@
     and wraps them as UNTRUSTED.
   - `build_pr_context(..., previous=...)` puts the block before `Diff:`.
   - `build_merge_content(..., previous=...)` does the same for large PRs.
-- [ ] **3.2 Reviewer** in `backend/app/services/reviewer.py` `handle_review`:
+- [~] **3.2 Reviewer** in `backend/app/services/reviewer.py` `handle_review`:
   - Load the previous review: the latest `PRReview` for the repo and PR with `github_comment_id` set.
   - Decide whether this is a follow-up (requirement 2). If so, call `gh.get_compare_files`, add
     `FOLLOWUP_DIRECTIVE` to the system prompt, and pass `previous` to the single-pass context or to

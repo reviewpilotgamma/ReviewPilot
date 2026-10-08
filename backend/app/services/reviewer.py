@@ -13,6 +13,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy import select
+
 from app.core.config import Settings, get_settings
 from app.core.database import SessionLocal
 from app.models import Job, PRReview
@@ -37,12 +39,14 @@ from app.services.errors import (
 )
 from app.services.github_app import PullRequest
 from app.services.prompts import (
+    FOLLOWUP_DIRECTIVE,
     MERGE_SYSTEM_PROMPT,
     RuleSettings,
     build_batch_context,
     build_merge_content,
     build_plan_system_prompt,
     build_pr_context,
+    build_previous_review_block,
     build_review_system_prompt,
 )
 from app.services.replies import render_reply
@@ -52,6 +56,10 @@ from app.services.rules import load_rule_settings
 logger = logging.getLogger(__name__)
 
 BANNER = "## ReviewPilot Architectural Audit"
+FOLLOWUP_BANNER = "## ReviewPilot Follow-up Review"
+FOLLOWUP_UNAVAILABLE_NOTE = (
+    "> Follow-up status unavailable for this large PR; the findings below describe the current code."
+)
 FOOTER = "_Triggered via ReviewPilot · Architecture Gatekeeper_"
 PLAN_BANNER = "## 🧭 ReviewPilot Execution Plan"
 PLAN_FOOTER = "_Triggered via ReviewPilot · @bot plan_"
@@ -108,6 +116,26 @@ class JobContext:
 
 
 # --------------------------------------------------------------------------- pure helpers
+@dataclass(frozen=True)
+class FollowUp:
+    """The posted review this one follows up, and what changed since."""
+
+    previous_id: int
+    previous_sha: str | None
+    previous_verdict: str
+    previous_score: float
+    changed_files: list[tuple[str, int, int]] | None
+    context: str
+
+    def headline(self) -> str:
+        reviewed = f"the review of `{self.previous_sha[:7]}`" if self.previous_sha else "the previous review"
+        line = f"_Follow-up to {reviewed} ({VERDICT_LABELS[self.previous_verdict]}, {self.previous_score:.1f}/10)"
+        if self.changed_files is not None:
+            count = len(self.changed_files)
+            line += f" · {count} file{'' if count == 1 else 's'} changed since"
+        return line + "_"
+
+
 def truncate_diff(diff: str, limit: int) -> tuple[str, bool]:
     """Return (diff, truncated). ``limit <= 0`` means no truncation."""
     if limit <= 0 or len(diff) <= limit:
@@ -190,10 +218,11 @@ def assemble_comment(
     not_reviewed: Sequence[str] = (),
     split_files: Sequence[str] = (),
     filtered: Sequence[str] = (),
+    followup: FollowUp | None = None,
+    followup_unavailable: bool = False,
 ) -> str:
-    header = [
-        BANNER,
-        "",
+    header = [FOLLOWUP_BANNER, "", followup.headline(), ""] if followup else [BANNER, ""]
+    header += [
         f"**Verdict:** {VERDICT_LABELS[parsed.verdict]}{META_SEPARATOR}"
         f"**Health score:** {parsed.score:.1f}/10{META_SEPARATOR}**Lines reviewed:** {lines_reviewed:,}",
     ]
@@ -215,6 +244,8 @@ def assemble_comment(
         header.append(f"> ⚠️ Lines too long to review whole were split in: {list_files(split_files)}")
     if filtered:
         header.append(f"_Not reviewed (generated or lockfiles): {list_files(filtered)}_")
+    if followup and followup_unavailable:
+        header.append(FOLLOWUP_UNAVAILABLE_NOTE)
     head = "\n".join(header) + "\n\n"
     tail = f"\n\n---\n{FOOTER}"
 
@@ -272,6 +303,21 @@ def _load_review(review_id: int) -> tuple[str, int | None] | None:
         return (review.full_markdown, review.github_comment_id) if review else None
 
 
+def _load_previous_review(repo_full_name: str, pr_number: int) -> PRReview | None:
+    """The latest review of this PR that was posted to GitHub."""
+    with SessionLocal() as db:
+        return db.scalars(
+            select(PRReview)
+            .where(
+                PRReview.repo_full_name == repo_full_name,
+                PRReview.pr_number == pr_number,
+                PRReview.github_comment_id.is_not(None),
+            )
+            .order_by(PRReview.id.desc())
+            .limit(1)
+        ).first()
+
+
 def _save_review(job_id: int, review: PRReview) -> int:
     """Persist the review and link it to the job in a single transaction."""
     with SessionLocal() as db:
@@ -308,6 +354,7 @@ class BatchedReview:
     model: str
     lines_reviewed: int
     not_reviewed: list[str]
+    merged_in_code: bool = False
 
 
 async def _fetch_diff(ctx: JobContext) -> str:
@@ -326,6 +373,7 @@ def _plan_review(
     diff: str,
     system_prompt: str,
     inline_docs: str | None,
+    extra_chars: int = 0,
 ) -> BatchPlan:
     """Batch the diff so each request (system prompt + documents + batch context) fits the context window."""
     files_hint = [("x" * 80, 0, 0)] * min(pr.changed_files, 500)
@@ -333,7 +381,7 @@ def _plan_review(
     ceiling = token_ceiling_chars(
         context_tokens=settings.GEMINI_CONTEXT_TOKENS,
         max_output_tokens=settings.GEMINI_MAX_OUTPUT_TOKENS,
-        reserved_chars=len(system_prompt) + len(inline_docs or "") + context_overhead,
+        reserved_chars=len(system_prompt) + len(inline_docs or "") + context_overhead + extra_chars,
     )
     try:
         return plan_batches(
@@ -431,14 +479,24 @@ async def _review_batches(
 
 
 async def _merge_reviews(
-    ctx: JobContext, pr: PullRequest, parts: list[tuple[int, list[str], ParsedReview]], total: int
+    ctx: JobContext,
+    pr: PullRequest,
+    parts: list[tuple[int, list[str], ParsedReview]],
+    total: int,
+    followup: FollowUp | None = None,
 ) -> tuple[ParsedReview, str | None]:
     """One LLM call that merges the batch reviews; joined in code if the call fails."""
     content = build_merge_content(
-        pr, ctx.owner, ctx.repo, [(n, paths, p.verdict, p.score, p.body) for n, paths, p in parts], total
+        pr,
+        ctx.owner,
+        ctx.repo,
+        [(n, paths, p.verdict, p.score, p.body) for n, paths, p in parts],
+        total,
+        previous=followup.context if followup else None,
     )
+    system = f"{MERGE_SYSTEM_PROMPT}\n\n{FOLLOWUP_DIRECTIVE}" if followup else MERGE_SYSTEM_PROMPT
     try:
-        result = await gemini.generate(MERGE_SYSTEM_PROMPT, content)
+        result = await gemini.generate(system, content)
     except ServiceError as exc:
         logger.warning("Merging %s batch reviews failed (%s); joining them in code", len(parts), exc)
         return fallback_merge([(n, p) for n, _, p in parts], total), None
@@ -454,6 +512,7 @@ async def _review_in_batches(
     system_prompt: str,
     cached: str | None,
     inline_docs: str | None,
+    followup: FollowUp | None = None,
 ) -> BatchedReview:
     outcomes = await _review_batches(
         settings, ctx, pr, plan, system_prompt=system_prompt, cached=cached, inline_docs=inline_docs
@@ -469,7 +528,7 @@ async def _review_in_batches(
         raise GeminiTransientError("all review batches failed") from error
 
     parts = [(o.number, o.batch.paths, o.parsed) for o in succeeded if o.parsed is not None]
-    merged, merge_model = await _merge_reviews(ctx, pr, parts, len(outcomes))
+    merged, merge_model = await _merge_reviews(ctx, pr, parts, len(outcomes), followup)
     merged = enforce_verdict_floor(merged, [p.verdict for _, _, p in parts])
 
     not_reviewed: list[str] = []
@@ -489,6 +548,7 @@ async def _review_in_batches(
         model=merge_model or succeeded[0].model or settings.GEMINI_MODEL,
         lines_reviewed=sum(o.batch.changed_lines for o in succeeded),
         not_reviewed=not_reviewed,
+        merged_in_code=merge_model is None,
     )
 
 
@@ -496,6 +556,42 @@ async def _review_in_batches(
 async def _post_review(ctx: JobContext, review_id: int, markdown: str) -> None:
     comment_id = await gh.post_issue_comment(ctx.installation_id, ctx.owner, ctx.repo, ctx.pr_number, markdown)
     await asyncio.to_thread(_mark_posted, review_id, comment_id)
+
+
+async def _prepare_followup(ctx: JobContext, pr: PullRequest) -> FollowUp | None:
+    """The follow-up context when this PR already has a posted review of a different (or unknown) commit."""
+    previous = await asyncio.to_thread(_load_previous_review, ctx.repo_full_name, ctx.pr_number)
+    if previous is None or (previous.head_sha and previous.head_sha == pr.head_sha):
+        return None
+    changed: list[tuple[str, int, int]] | None = None
+    if previous.head_sha and pr.head_sha:
+        try:
+            changed = await gh.get_compare_files(
+                ctx.installation_id, ctx.owner, ctx.repo, previous.head_sha, pr.head_sha
+            )
+        except ServiceError as exc:
+            logger.warning(
+                "Comparing %s...%s failed (%s); follow-up runs without it", previous.head_sha, pr.head_sha, exc
+            )
+    return FollowUp(
+        previous_id=previous.id,
+        previous_sha=previous.head_sha,
+        previous_verdict=previous.verdict,
+        previous_score=previous.score,
+        changed_files=changed,
+        context=build_previous_review_block(
+            previous.full_markdown,
+            head_sha=previous.head_sha,
+            verdict=previous.verdict,
+            score=previous.score,
+            changed_files=changed,
+        ),
+    )
+
+
+async def _already_reviewed(ctx: JobContext, pr: PullRequest) -> bool:
+    previous = await asyncio.to_thread(_load_previous_review, ctx.repo_full_name, ctx.pr_number)
+    return previous is not None and bool(pr.head_sha) and previous.head_sha == pr.head_sha
 
 
 async def handle_review(ctx: JobContext) -> None:
@@ -518,6 +614,13 @@ async def handle_review(ctx: JobContext) -> None:
     if pr.state == "closed":
         logger.info("PR %s#%s is closed; skipping review", ctx.repo_full_name, ctx.pr_number)
         return
+    trigger = ctx.data.get("trigger", "comment")
+    if trigger == "push" and await _already_reviewed(ctx, pr):
+        # e.g. an @review already covered this commit while the push job waited.
+        logger.info(
+            "PR %s#%s head %s already reviewed; skipping push review", ctx.repo_full_name, ctx.pr_number, pr.head_sha
+        )
+        return
 
     diff = await _fetch_diff(ctx)
     if not diff.strip():
@@ -531,7 +634,9 @@ async def handle_review(ctx: JobContext) -> None:
 
     requester_note = ctx.data.get("requester_note") or None
     system_prompt = build_review_system_prompt(rules, requester_note, prompt.template)
-    plan = _plan_review(settings, pr, ctx, diff_for_prompt, system_prompt, inline_docs)
+    followup = await _prepare_followup(ctx, pr)
+    followup_extra = len(FOLLOWUP_DIRECTIVE) + len(followup.context) + 4 if followup else 0
+    plan = _plan_review(settings, pr, ctx, diff_for_prompt, system_prompt, inline_docs, followup_extra)
 
     if not plan.batches:
         reply = render_reply("empty_diff")
@@ -544,13 +649,14 @@ async def handle_review(ctx: JobContext) -> None:
         # Same request as before batching existed; only the noise files are dropped when there are any.
         batch_diff = plan.batches[0].text if plan.filtered else diff_for_prompt
         result = await gemini.generate(
-            system_prompt,
+            f"{system_prompt}\n\n{FOLLOWUP_DIRECTIVE}" if followup else system_prompt,
             build_pr_context(
                 pr,
                 ctx.owner,
                 ctx.repo,
                 batch_diff,
                 manifest=[(f.path, f.additions, f.deletions) for f in plan.files if f.path not in plan.filtered],
+                previous=followup.context if followup else None,
             ),
             cached_content=cached,
             inline_documents=inline_docs,
@@ -558,19 +664,27 @@ async def handle_review(ctx: JobContext) -> None:
         parsed, model = parse_review(result.text), result.model
         lines_reviewed = plan.batches[0].changed_lines if plan.filtered else count_changed_lines(diff)
         not_reviewed: list[str] = []
+        merged_in_code = False
     else:
         outcome = await _review_in_batches(
-            settings, ctx, pr, plan, system_prompt=system_prompt, cached=cached, inline_docs=inline_docs
+            settings,
+            ctx,
+            pr,
+            plan,
+            system_prompt=system_prompt,
+            cached=cached,
+            inline_docs=inline_docs,
+            followup=followup,
         )
-        parsed, model, lines_reviewed, not_reviewed = (
+        parsed, model, lines_reviewed, not_reviewed, merged_in_code = (
             outcome.parsed,
             outcome.model,
             outcome.lines_reviewed,
             outcome.not_reviewed,
+            outcome.merged_in_code,
         )
 
     diff_truncated = truncated or bool(not_reviewed) or bool(plan.cut_files)
-    trigger = ctx.data.get("trigger", "comment")
     markdown = assemble_comment(
         parsed,
         lines_reviewed=lines_reviewed,
@@ -584,6 +698,8 @@ async def handle_review(ctx: JobContext) -> None:
         not_reviewed=not_reviewed,
         split_files=plan.cut_files,
         filtered=plan.filtered,
+        followup=followup,
+        followup_unavailable=merged_in_code,
     )
 
     review = PRReview(
@@ -600,6 +716,8 @@ async def handle_review(ctx: JobContext) -> None:
         requester=ctx.data.get("requester"),
         diff_truncated=diff_truncated,
         model=model,
+        head_sha=pr.head_sha or None,
+        previous_review_id=followup.previous_id if followup else None,
         review_context=json.dumps(
             build_review_context(
                 prompt,
