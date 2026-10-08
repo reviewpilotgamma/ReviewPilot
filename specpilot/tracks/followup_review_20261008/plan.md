@@ -18,7 +18,7 @@
   - Update `backend/app/models/pr_review.py`, and add `head_sha` and `previous_review_id` to `ReviewListItem` in
     `backend/app/schemas/reviews.py`.
   - Test: upgrade and downgrade, following `tests/test_migration_credential_auth.py`.
-- [~] **1.2 GitHub client** in `backend/app/services/github_app.py`:
+- [x] **1.2 GitHub client** `e077819` in `backend/app/services/github_app.py`:
   - Add `head_sha` to `PullRequest` (from `head.sha`).
   - Add `get_compare_files(installation_id, owner, repo, base_sha, head_sha) -> list[tuple[str, int, int]] | None`,
     which calls `GET /repos/{o}/{r}/compare/{base}...{head}` through `_installation_request` and returns `None`
@@ -26,7 +26,7 @@
   - respx tests in `tests/test_github_app.py`.
 
 ### Phase 2: Triggers
-- [ ] **2.1 Dispatcher** in `backend/app/services/dispatcher.py` `plan_jobs`:
+- [~] **2.1 Dispatcher** in `backend/app/services/dispatcher.py` `plan_jobs`:
   - Add a `pull_request` + `synchronize` branch. When `load_rule_settings(...).review_mode == "auto"`, queue
     `JobSpec("review", {...base, "trigger": "push", "requester": None})`.
   - Skip with `ignore_reason="review already queued"` when a queued review `Job` for the same owner, repo and PR

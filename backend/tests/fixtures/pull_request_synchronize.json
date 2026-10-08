@@ -1,0 +1,16 @@
+{
+  "action": "synchronize",
+  "number": 7,
+  "before": "1111111111111111111111111111111111111111",
+  "after": "2222222222222222222222222222222222222222",
+  "pull_request": {
+    "number": 7,
+    "title": "Add payment retries",
+    "user": {"login": "bob", "type": "User"},
+    "head": {"ref": "feat", "sha": "2222222222222222222222222222222222222222"},
+    "draft": false
+  },
+  "repository": {"full_name": "Acme/API", "private": false},
+  "installation": {"id": 99},
+  "sender": {"login": "bob", "type": "User"}
+}
