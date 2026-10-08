@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from starlette.concurrency import run_in_threadpool
 
-from app.api import auth, documents, github, insights, metrics, prompt, reviews, rules, webhooks
+from app.api import auth, documents, exports, github, insights, metrics, prompt, reviews, rules, webhooks
 from app.api import settings as settings_api
 from app.core.config import get_settings
 from app.core.database import SessionLocal, run_migrations
@@ -101,7 +101,9 @@ def create_app() -> FastAPI:
     )
     _register_exception_handlers(app)
 
-    for module in (auth, webhooks, rules, documents, prompt, reviews, insights, metrics, github, settings_api):
+    for module in (
+        auth, webhooks, rules, documents, prompt, reviews, insights, metrics, exports, github, settings_api
+    ):
         app.include_router(module.router, prefix=API_PREFIX)
 
     # Legacy PoC webhook URL so existing GitHub App configurations keep working.
