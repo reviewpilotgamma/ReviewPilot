@@ -6,6 +6,7 @@ from typing import Annotated
 
 import jwt
 from fastapi import Depends, HTTPException, Path, Query, Request, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -17,7 +18,7 @@ from app.core.security import (
     decode_session_token,
     decrypt_token,
 )
-from app.models import User
+from app.models import RepoGrant, User
 from app.models.user import ROLE_ADMIN
 from app.schemas.common import REPO_SEGMENT_PATTERN
 from app.services.access import RepoInfo, get_accessible_repos, get_app_repos
@@ -64,23 +65,30 @@ def require_admin(user: CurrentUser) -> User:
 AdminUser = Annotated[User, Depends(require_admin)]
 
 
-async def get_accessible(user: CurrentUser, refresh: bool = Query(False)) -> dict[str, RepoInfo]:
+async def get_accessible(user: CurrentUser, db: DbSession, refresh: bool = Query(False)) -> dict[str, RepoInfo]:
     """Repositories visible to the current user.
 
     Admins see every installation of the GitHub App (App credentials, no GitHub link needed). Everyone else sees
-    what their linked GitHub identity can reach through the App. Not linked, or a token that is undecryptable or
-    revoked, means no repositories (the UI then asks the user to install the GitHub App) rather than a 401, so the
-    user keeps their session.
+    what their linked GitHub identity can reach through the App, plus repositories an admin granted them that the
+    App is still installed on. Not linked, or a token that is undecryptable or revoked, contributes nothing (the UI
+    then asks the user to install the GitHub App) rather than a 401, so the user keeps their session.
     """
-    if is_admin(user) and get_settings().github_app_configured:
+    app_configured = get_settings().github_app_configured
+    if is_admin(user) and app_configured:
         return await get_app_repos(refresh=refresh)
+
+    repos: dict[str, RepoInfo] = {}
     token = decrypt_token(user.access_token) if user.access_token else None
-    if token is None:
-        return {}
-    try:
-        return await get_accessible_repos(user, token, refresh=refresh)
-    except ReauthRequired:
-        return {}
+    if token is not None:
+        try:
+            repos.update(await get_accessible_repos(user, token, refresh=refresh))
+        except ReauthRequired:
+            pass
+    granted = list(db.scalars(select(RepoGrant.repo_full_name).where(RepoGrant.user_id == user.id)))
+    if granted and app_configured:
+        installed = await get_app_repos(refresh=refresh)
+        repos.update({name: installed[name] for name in granted if name in installed})
+    return repos
 
 
 Accessible = Annotated[dict[str, RepoInfo], Depends(get_accessible)]

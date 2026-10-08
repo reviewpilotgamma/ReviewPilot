@@ -314,3 +314,32 @@ def test_connect_install_resolves_slug_from_github_when_unset(client, mock_http,
     mock_http.get(f"{GITHUB_API}/app").respond(200, json={"slug": "from-github", "name": "X"})
     _sign_in(client)
     assert _connect(client).startswith("https://github.com/apps/from-github/installations/new?state=")
+
+
+# --------------------------------------------------------------------------- admin-granted repositories
+def _grant(db, username: str, *repos: str) -> None:
+    from scripts.grant_repo import main
+
+    assert main([username, *repos]) == 0
+
+
+def test_dev_sees_granted_repos_that_the_app_is_installed_on(client, db, mock_http):
+    _mock_app_installations(mock_http)
+    _sign_in(client)
+    _grant(db, "dev", "acme/api", "acme/not-installed")
+    installs = client.get("/api/v1/github/installations").json()
+    assert [r["full_name"] for i in installs for r in i["repos"]] == ["acme/api"]
+    assert client.get("/api/v1/rules/acme/web").status_code == 404
+
+
+def test_grant_script_revoke_and_validation(db, capsys):
+    from scripts.grant_repo import main
+
+    accounts.seed_accounts(db, reload_settings())
+    assert main(["dev", "Acme/API"]) == 0
+    assert main(["dev", "acme/api"]) == 0  # idempotent
+    assert "dev: acme/api" in capsys.readouterr().out
+    assert main(["dev", "acme/api", "--revoke"]) == 0
+    assert "(no granted repositories)" in capsys.readouterr().out
+    assert main(["dev", "not-a-repo"]) == 1
+    assert main(["ghost", "acme/api"]) == 1
