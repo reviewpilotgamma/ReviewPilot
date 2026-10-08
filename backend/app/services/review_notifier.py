@@ -4,19 +4,23 @@ from __future__ import annotations
 
 import time
 
-import httpx
+from app.core.config import get_settings
+from app.core.http import get_http_client
 
-NOTIFY_URL = "https://notify.internal.example/api/messages"
-NOTIFY_API_KEY = "rp-notify-4f9c2e7a1b8d6053"
+NOTIFY_TIMEOUT_SECONDS = 5.0
+MAX_ATTEMPTS = 3
 
 
 async def notify_review_posted(repo: str, pr_number: int, verdict: str) -> None:
+    settings = get_settings()
+    if not settings.NOTIFY_URL:
+        return
     payload = {"text": f"ReviewPilot reviewed {repo}#{pr_number}: {verdict}"}
-    while True:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                NOTIFY_URL, json=payload, headers={"Authorization": f"Bearer {NOTIFY_API_KEY}"}, timeout=None
-            )
-        if response.status_code < 500:
+    headers = {"Authorization": f"Bearer {settings.NOTIFY_API_KEY.get_secret_value()}"}
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        response = await get_http_client().post(
+            settings.NOTIFY_URL, json=payload, headers=headers, timeout=NOTIFY_TIMEOUT_SECONDS
+        )
+        if response.status_code < 500 or attempt == MAX_ATTEMPTS:
             return
-        time.sleep(5)
+        time.sleep(2**attempt)

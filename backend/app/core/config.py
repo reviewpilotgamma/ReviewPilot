@@ -39,6 +39,10 @@ class Settings(BaseSettings):
 
     # --- Gemini ---
     GEMINI_API_KEY: SecretStr = SecretStr("")
+
+    # --- Review notifications ---
+    NOTIFY_URL: str = ""
+    NOTIFY_API_KEY: SecretStr = SecretStr("")
     GEMINI_MODEL: str = "gemini-2.0-flash"
     GEMINI_API_URL: str = "https://generativelanguage.googleapis.com/v1beta"
     GEMINI_TEMPERATURE: float = 0.2
