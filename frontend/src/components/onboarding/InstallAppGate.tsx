@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ConnectGithubButton, InstallAppButton } from "@/components/layout/GithubConnect";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, useToast } from "@/hooks/useAuth";
 import { useAppInfo, useInstallations } from "@/hooks/useInstallations";
 import { githubApi } from "@/services/endpoints";
 
@@ -13,6 +13,7 @@ export function InstallAppGate() {
   const { data: app } = useAppInfo();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [refreshing, setRefreshing] = useState(false);
   useInstallations({ pollWhileEmpty: true });
 
@@ -20,6 +21,8 @@ export function InstallAppGate() {
     setRefreshing(true);
     try {
       queryClient.setQueryData(["installations"], await githubApi.installations(true));
+    } catch (error) {
+      toast.error(error instanceof Error && error.message ? error.message : "Could not refresh installations");
     } finally {
       setRefreshing(false);
     }
