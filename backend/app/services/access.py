@@ -7,17 +7,11 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from app.models import PRReview, RepoRule, User
+from app.models import User
 from app.services import github_user
 from app.services.errors import ReauthRequired
 
 CACHE_TTL_SECONDS = 300
-LOCAL_GITHUB_ID = 0
-LOCAL_INSTALLATION_ID = 0
-DEFAULT_LOCAL_REPO = "local/manual"
 
 
 @dataclass(frozen=True)
@@ -41,25 +35,6 @@ def clear_cache(user_id: int | None = None) -> None:
         _locks.clear()
     else:
         _cache.pop(user_id, None)
-
-
-def local_workspace(db: Session) -> dict[str, RepoInfo]:
-    """Repos visible when GitHub is not connected: the default repo plus anything already stored."""
-    names = {DEFAULT_LOCAL_REPO}
-    names.update(db.scalars(select(RepoRule.repo_full_name)))
-    names.update(db.scalars(select(PRReview.repo_full_name).distinct()))
-    return {
-        name: RepoInfo(
-            full_name=name,
-            installation_id=LOCAL_INSTALLATION_ID,
-            account_login="local",
-            account_type="User",
-            account_avatar_url="",
-            private=False,
-            html_url="",
-        )
-        for name in names
-    }
 
 
 async def get_accessible_repos(user: User, token: str | None, *, refresh: bool = False) -> dict[str, RepoInfo]:

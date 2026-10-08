@@ -53,12 +53,12 @@ async def test_undecryptable_token_requires_reauth(db):
         await access.get_accessible_repos(make_user(db), None)
 
 
-def test_api_maps_reauth_to_401(client, db, mock_http):
+def test_revoked_token_shows_no_repos_instead_of_401(client, db, mock_http):
     mock_http.get(f"{GITHUB_API}/user/installations?per_page=100").mock(return_value=httpx.Response(401))
     user = make_user(db)
     client.cookies.set(SESSION_COOKIE, create_session_token(user.id, user.username))
     response = client.get("/api/v1/github/installations")
-    assert response.status_code == 401 and response.json()["detail"] == "reauth_required"
+    assert response.status_code == 200 and response.json() == []
 
 
 def test_installations_endpoint_groups_repos(client, db, installations):

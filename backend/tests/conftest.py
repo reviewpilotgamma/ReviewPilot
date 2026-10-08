@@ -32,7 +32,7 @@ os.environ["WORKER_ENABLED"] = "false"
 from app.core import database, http  # noqa: E402
 from app.core.config import reload_settings  # noqa: E402
 from app.core.security import SESSION_COOKIE, create_session_token, encrypt_token  # noqa: E402
-from app.services import access, github_app  # noqa: E402
+from app.services import access, accounts, github_app  # noqa: E402
 
 
 @pytest.fixture(scope="session")
@@ -83,7 +83,8 @@ def env(
         "GEMINI_API_URL": GEMINI_API,
         "SESSION_SECRET": "s" * 48,
         "TOKEN_ENCRYPTION_KEY": Fernet.generate_key().decode(),
-        "ADMIN_GITHUB_LOGINS": "admin-user",
+        "SEED_DEV_PASSWORD": "dev-pass-123",
+        "SEED_ADMIN_PASSWORD": "admin-pass-123",
         "WORKER_ENABLED": "false",
     }
     for key, value in values.items():
@@ -92,6 +93,7 @@ def env(
     database.configure_engine(values["DATABASE_URL"])
     github_app.clear_caches()
     access.clear_cache()
+    accounts.throttle.reset()
     http.set_http_client(None)
     yield tmp_path
     http.set_http_client(None)
@@ -148,10 +150,18 @@ def post_webhook(client, event: str, payload: dict, delivery: str = "d-1"):
     )
 
 
-def make_user(db, login: str = "alice", github_id: int = 1001):
+def make_user(db, login: str = "alice", github_id: int = 1001, role: str | None = None):
+    """A user already linked to GitHub. ``admin-user`` is an admin unless ``role`` says otherwise."""
     from app.models import User
 
-    user = User(github_id=github_id, username=login, avatar_url=None, access_token=encrypt_token("gho_user"))
+    user = User(
+        github_id=github_id,
+        github_login=login,
+        username=login,
+        role=role or ("admin" if login == "admin-user" else "dev"),
+        avatar_url=None,
+        access_token=encrypt_token("gho_user"),
+    )
     db.add(user)
     db.commit()
     db.refresh(user)

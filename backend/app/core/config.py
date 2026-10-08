@@ -51,7 +51,11 @@ class Settings(BaseSettings):
     SESSION_SECRET: SecretStr = SecretStr("")
     SESSION_TTL_HOURS: int = Field(8, ge=1, le=24 * 30)
     TOKEN_ENCRYPTION_KEY: SecretStr = SecretStr("")
-    ADMIN_GITHUB_LOGINS: str = ""
+    # Seeded sign-in accounts. Outside production, unset passwords fall back to dev defaults.
+    SEED_DEV_USERNAME: str = "dev"
+    SEED_DEV_PASSWORD: SecretStr = SecretStr("")
+    SEED_ADMIN_USERNAME: str = "admin"
+    SEED_ADMIN_PASSWORD: SecretStr = SecretStr("")
 
     # --- Review engine ---
     # 0 = no truncation (send full PR diff). Positive values restore a hard character cap.
@@ -76,10 +80,6 @@ class Settings(BaseSettings):
         return self.ENV.lower() == "production"
 
     @property
-    def admin_logins(self) -> set[str]:
-        return {x.strip().lower() for x in self.ADMIN_GITHUB_LOGINS.split(",") if x.strip()}
-
-    @property
     def private_key_path(self) -> Path:
         path = Path(self.GITHUB_PRIVATE_KEY_PATH)
         return path if path.is_absolute() else (BACKEND_DIR / path).resolve()
@@ -91,11 +91,6 @@ class Settings(BaseSettings):
     @property
     def oauth_configured(self) -> bool:
         return bool(self.GITHUB_CLIENT_ID and self.GITHUB_CLIENT_SECRET.get_secret_value())
-
-    @property
-    def local_mode(self) -> bool:
-        """Development without GitHub OAuth: local sign-in and a local repo list."""
-        return not self.is_production and not self.oauth_configured
 
     @property
     def gemini_configured(self) -> bool:

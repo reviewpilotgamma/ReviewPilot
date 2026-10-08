@@ -19,6 +19,7 @@ from app.core.config import get_settings
 from app.core.database import SessionLocal, run_migrations
 from app.core.http import close_http_client, get_http_client
 from app.core.logging import configure_logging, request_id_var
+from app.services.accounts import seed_accounts
 from app.services.errors import GitHubError, NotConfiguredError, ReauthRequired
 from app.services.worker import worker
 
@@ -26,10 +27,16 @@ logger = logging.getLogger(__name__)
 API_PREFIX = "/api/v1"
 
 
+def _seed_accounts() -> None:
+    with SessionLocal() as db:
+        seed_accounts(db, get_settings())
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     await run_in_threadpool(run_migrations)
+    await run_in_threadpool(_seed_accounts)
     get_http_client()
     if settings.WORKER_ENABLED:
         await worker.start()

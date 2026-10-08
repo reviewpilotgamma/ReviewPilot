@@ -50,7 +50,6 @@ async def app_info() -> AppInfo:
         name=name,
         install_url=install_url,
         html_url=html_url or (f"https://github.com/apps/{slug}" if slug else ""),
-        local_mode=settings.local_mode,
     )
 
 

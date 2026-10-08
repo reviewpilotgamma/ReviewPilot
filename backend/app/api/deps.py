@@ -8,7 +8,6 @@ import jwt
 from fastapi import Depends, HTTPException, Path, Query, Request, status
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import (
     CSRF_HEADER,
@@ -18,8 +17,10 @@ from app.core.security import (
     decrypt_token,
 )
 from app.models import User
+from app.models.user import ROLE_ADMIN
 from app.schemas.common import REPO_SEGMENT_PATTERN
-from app.services.access import RepoInfo, get_accessible_repos, local_workspace
+from app.services.access import RepoInfo, get_accessible_repos
+from app.services.errors import ReauthRequired
 
 DbSession = Annotated[Session, Depends(get_db)]
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
@@ -50,7 +51,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 def is_admin(user: User) -> bool:
-    return user.username.lower() in get_settings().admin_logins
+    return user.role == ROLE_ADMIN
 
 
 def require_admin(user: CurrentUser) -> User:
@@ -62,11 +63,19 @@ def require_admin(user: CurrentUser) -> User:
 AdminUser = Annotated[User, Depends(require_admin)]
 
 
-async def get_accessible(user: CurrentUser, db: DbSession, refresh: bool = Query(False)) -> dict[str, RepoInfo]:
-    """Repositories visible to the current user (ReauthRequired is mapped to 401 globally)."""
-    if get_settings().local_mode:
-        return local_workspace(db)
-    return await get_accessible_repos(user, decrypt_token(user.access_token), refresh=refresh)
+async def get_accessible(user: CurrentUser, refresh: bool = Query(False)) -> dict[str, RepoInfo]:
+    """Repositories visible to the current user through their linked GitHub identity.
+
+    Not linked, or a token that is undecryptable or revoked, means no repositories (the UI then asks the user to
+    install the GitHub App) rather than a 401, so the user keeps their session.
+    """
+    token = decrypt_token(user.access_token) if user.access_token else None
+    if token is None:
+        return {}
+    try:
+        return await get_accessible_repos(user, token, refresh=refresh)
+    except ReauthRequired:
+        return {}
 
 
 Accessible = Annotated[dict[str, RepoInfo], Depends(get_accessible)]
