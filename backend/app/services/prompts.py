@@ -124,18 +124,20 @@ FOLLOWUP_DIRECTIVE = """FOLLOW-UP REVIEW: ReviewPilot already reviewed an earlie
 content includes that previous review and, when available, the files changed since. Review the CURRENT diff and
 compare it with the previous review. In the Executive Summary, say what changed since the previous review.
 
-Add a ### Follow-up Status section right after the Executive Summary:
+Add a ### Follow-up Status section immediately after the Executive Summary, before Scope Check:
 - **Fixed:**
   - **Finding title** in `path/to/file.py`: what changed to fix it.
 - **Still open:**
   - **Finding title** in `path/to/file.py`: what remains and why it is still a problem.
 - **New:**
   - **Finding title** in `path/to/file.py`: what the new problem is.
-Write "None." under a label that has no items. Place every Critical and Warning finding of the previous review
-under Fixed or Still open. Do not use the severity tags in this section; give the earlier severity in plain words,
-for example (was critical).
-In Architectural Findings, list only problems present in the current code (still open and new), with severity
-tags. Never list fixed findings there."""
+Write "None." under a label that has no items. Go through the previous review's Critical and Warning findings one
+by one and list each, by its previous title, exactly once: under Fixed only if the current code no longer has the
+problem, otherwise under Still open. Never leave one out. Do not use the severity tags in this section; give the
+earlier severity in plain words, for example (was critical).
+In Architectural Findings, list every problem present in the current code (all still open and new items), with
+severity tags; a still-open finding keeps at least its earlier severity unless the code made it less severe.
+Never list fixed findings there."""
 
 
 REVIEW_SYSTEM_TEMPLATE = (

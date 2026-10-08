@@ -124,3 +124,5 @@ def test_followup_directive_rules():
     directive = prompts.FOLLOWUP_DIRECTIVE
     for rule in ("### Follow-up Status", "**Fixed:**", "**Still open:**", "**New:**", "Never list fixed findings"):
         assert rule in directive
+    assert "before Scope Check" in directive
+    assert "exactly once" in directive and "Never leave one out." in directive
