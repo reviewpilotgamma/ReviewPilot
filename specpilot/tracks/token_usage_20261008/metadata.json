@@ -1,0 +1,9 @@
+{
+  "track_id": "token_usage_20261008",
+  "title": "Show tokens used per review in Review History",
+  "type": "feature",
+  "status": "in progress",
+  "created": "2026-10-08",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}
