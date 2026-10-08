@@ -100,6 +100,14 @@ After the first sign-in the dashboard asks the user to **Install GitHub App** (a
 links that user's GitHub account, and from then on they see the repositories their GitHub account can reach
 through the App. If the App is already installed, use **Already installed? Connect GitHub**.
 
+An admin can also grant a user repositories the App is already installed on, without that user connecting
+GitHub:
+
+```bash
+cd backend
+python -m scripts.grant_repo dev reviewpilotgamma/reviewpilot   # add --revoke to remove, --list to show
+```
+
 > Settings saved from the UI are written to `backend/.env`. Real environment variables take precedence over
 > `.env`, so don't also set those keys in the process environment if you want to manage them from the UI.
 

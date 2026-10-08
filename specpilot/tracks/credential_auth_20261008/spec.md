@@ -40,7 +40,9 @@ before their data appears.
    development): the user is gated and the install button is disabled.
 7. **Admin sees every installation.** An admin sees the repositories of every installation of the GitHub
    App. These are listed with the App's own credentials (App JWT and installation tokens), with no GitHub link
-   needed. A dev user sees only the repositories their linked GitHub account can reach through the App.
+   needed. A dev user sees the repositories their linked GitHub account can reach through the App, plus any
+   repositories an admin granted them (`repo_grants`, managed with `python -m scripts.grant_repo`) that the App
+   is still installed on.
 8. **Removed.** GitHub OAuth used as login (`GET /auth/login`), `POST /auth/dev-login`, local mode (the
    `local/manual` workspace and `AppInfo.local_mode`), the frontend `loginUrl` and `authApi.devLogin`.
    `ProtectedRoute` redirects to `/login?next=…`.

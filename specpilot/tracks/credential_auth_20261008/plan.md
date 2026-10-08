@@ -58,6 +58,11 @@
       admins; navbar treats any installation as installed; tests
 - [x] 4.2 Quality gate (backend and frontend) and a README note
 
+## Phase 5 — Admin-granted repositories (follow-up)
+
+- [x] 5.1 `RepoGrant` model, migration `0006_repo_grants`, granted repos in `get_accessible`,
+      `scripts/grant_repo.py`, tests — `70bb483`
+
 ## Implementation Notes
 
 - Connect is a `GET /auth/github/connect?mode=install|authorize` redirect rather than a POST that returns a
