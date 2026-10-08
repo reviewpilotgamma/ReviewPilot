@@ -1,5 +1,5 @@
 import { ThumbsDown, ThumbsUp } from "lucide-react";
-import { PartialBadge, VerdictBadge } from "@/components/ui/Badge";
+import { FollowUpBadge, PartialBadge, VerdictBadge } from "@/components/ui/Badge";
 import { Cell, Row, Table } from "@/components/ui/Table";
 import { SkeletonRows } from "@/components/ui/States";
 import { absoluteTime, formatScore, relativeTime, scoreTone } from "@/lib/format";
@@ -46,6 +46,7 @@ export function ReviewsTable({ reviews, loading, onSelect, showFeedback = false 
             <Cell>
               <div className="flex flex-wrap items-center gap-1.5">
                 <VerdictBadge verdict={review.verdict} />
+                {review.previous_review_id != null && <FollowUpBadge />}
                 {review.diff_truncated && <PartialBadge />}
               </div>
             </Cell>

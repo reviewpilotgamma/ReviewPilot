@@ -125,6 +125,10 @@ export interface ReviewListItem {
   pr_url: string;
   /** True when part of the diff was not reviewed (cut, failed batch, or time limit). */
   diff_truncated: boolean;
+  /** Head commit the review saw (null for older reviews). */
+  head_sha?: string | null;
+  /** The review this one follows up, when the PR changed since an earlier posted review. */
+  previous_review_id?: number | null;
   feedback_counts: FeedbackCounts;
 }
 

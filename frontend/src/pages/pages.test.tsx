@@ -397,6 +397,31 @@ describe("Golden prompt panel", () => {
 });
 
 describe("History page", () => {
+  it("marks follow-up reviews and links to the previous review", async () => {
+    const followUp: ReviewDetail = {
+      ...REVIEW,
+      id: 2,
+      trigger: "push",
+      requester: null,
+      previous_review_id: 1,
+      full_markdown: "## ReviewPilot Follow-up Review\n\n### Follow-up Status\n- **Fixed:** retries",
+    };
+    const user = userEvent.setup();
+    mockFetch({
+      "GET /api/v1/reviews": { items: [followUp, REVIEW], total: 2, page: 1, page_size: 20 },
+      "GET /api/v1/reviews/2": followUp,
+      "GET /api/v1/reviews/1": REVIEW,
+    });
+    const { router } = renderWithProviders(<History />, { path: "/history?review=2" });
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText("Follow-up after push")).toBeInTheDocument();
+    expect(within(dialog).getByText("Follow-up")).toBeInTheDocument();
+    expect(screen.getAllByText("Follow-up").length).toBeGreaterThanOrEqual(2); // table row + drawer
+
+    await user.click(within(dialog).getByRole("link", { name: "Previous review" }));
+    await waitFor(() => expect(router.state.location.search).toContain("review=1"));
+  });
+
   it("opens the review drawer from the ?review= deep link", async () => {
     mockFetch({
       "GET /api/v1/reviews": { items: [REVIEW], total: 1, page: 1, page_size: 20 },

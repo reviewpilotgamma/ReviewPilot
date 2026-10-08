@@ -1,13 +1,23 @@
 import { ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import { MarkdownView } from "@/components/diff/MarkdownView";
-import { PartialBadge, VerdictBadge } from "@/components/ui/Badge";
+import { FollowUpBadge, PartialBadge, VerdictBadge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Overlay";
 import { ErrorState } from "@/components/ui/States";
 import { Spinner } from "@/components/ui/Spinner";
 import { useReview } from "@/hooks/useReviews";
 import { absoluteTime, formatScore } from "@/lib/format";
+import type { ReviewDetail } from "@/types/api";
 import { FeedbackWidget } from "./FeedbackWidget";
 import { ReviewedWith } from "./ReviewedWith";
+
+function triggerText(review: ReviewDetail): string {
+  const followUp = review.previous_review_id != null;
+  if (review.trigger === "push") return followUp ? "Follow-up after push" : "Review after push";
+  if (review.trigger === "auto") return "Auto review on open";
+  const requester = `@${review.requester ?? "unknown"}`;
+  return followUp ? `Follow-up requested by ${requester}` : `Requested by ${requester}`;
+}
 
 export function ReviewDrawer({ reviewId, onClose }: { reviewId: number | null; onClose: () => void }) {
   const { data: review, isLoading, isError, refetch } = useReview(reviewId);
@@ -20,14 +30,18 @@ export function ReviewDrawer({ reviewId, onClose }: { reviewId: number | null; o
       <h2 className="text-lg font-semibold leading-snug">{review.pr_title}</h2>
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
         <VerdictBadge verdict={review.verdict} />
+        {review.previous_review_id != null && <FollowUpBadge />}
         {review.diff_truncated && <PartialBadge />}
         <span className="font-medium text-ink">{formatScore(review.score)}</span>
         <span>·</span>
         <span>{absoluteTime(review.created_at)}</span>
         <span>·</span>
-        <span>
-          {review.trigger === "auto" ? "Auto review on open" : `Requested by @${review.requester ?? "unknown"}`}
-        </span>
+        <span>{triggerText(review)}</span>
+        {review.previous_review_id != null && (
+          <Link to={`/history?review=${review.previous_review_id}`} className="text-violet hover:underline">
+            Previous review
+          </Link>
+        )}
         <a
           href={review.pr_url}
           target="_blank"

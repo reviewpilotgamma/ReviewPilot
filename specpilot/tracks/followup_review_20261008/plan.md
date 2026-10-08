@@ -52,7 +52,7 @@
     "Follow-up to…" line, and adds the unavailable note when the code-joined fallback was used.
   - Save `head_sha` and `previous_review_id` on the new `PRReview`.
   - Add "Follow-up Status" to `OPTIONAL_SECTIONS` and `MERGED_SECTIONS`, right after the summary.
-- [~] **3.3 Tests:**
+- [x] **3.3 Tests:** `95f5acf`
   - `tests/test_reviewer.py`: a follow-up posts a new comment with the follow-up banner, the context has the
     previous findings and changed files, a compare 404 still works, the same head sha gives a full review, and
     `head_sha` and `previous_review_id` are stored.
@@ -60,7 +60,7 @@
   - `tests/e2e/test_review_flows.py`: open, push, follow-up, using the harness (`add_pr`, `comments_for`).
 
 ### Phase 4: Dashboard
-- [ ] **4.1** Add `head_sha?` and `previous_review_id?` to `frontend/src/types/api.ts`.
+- [~] **4.1** Add `head_sha?` and `previous_review_id?` to `frontend/src/types/api.ts`.
 - [ ] **4.2** `frontend/src/components/reviews/ReviewDrawer.tsx` shows the trigger text for `push` and follow-ups,
   plus the "Previous review" link.
 - [ ] **4.3** `frontend/src/pages/History.tsx` shows a "Follow-up" badge.

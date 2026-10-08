@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FileWarning } from "lucide-react";
+import { FileWarning, History } from "lucide-react";
 import type { ReactNode } from "react";
 import { VERDICT_LABEL } from "@/lib/format";
 import type { EventStatus, JobStatus, Verdict } from "@/types/api";
@@ -54,6 +54,18 @@ const STATUS_TONES: Record<EventStatus | JobStatus, Tone> = {
   ignored: "gray",
   failed: "rose",
 };
+
+/** Shown on a review that follows up an earlier review of the same PR. */
+export function FollowUpBadge() {
+  return (
+    <span title="Compares the updated PR with the previous review: fixed, still open and new findings.">
+      <Badge tone="violet">
+        <History className="h-3 w-3" aria-hidden />
+        Follow-up
+      </Badge>
+    </span>
+  );
+}
 
 export function StatusBadge({ status }: { status: EventStatus | JobStatus }) {
   return (
