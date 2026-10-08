@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
@@ -47,6 +49,12 @@ async def upload_document(
 ) -> DocumentUploadOut:
     """Save the document; with ``warm`` (default), build the repo's Gemini cache before responding."""
     data = await file.read()
+    # Keep a local copy of every upload for auditing.
+    audit_dir = Path("uploads") / full_name.replace("/", "_")
+    audit_dir.mkdir(parents=True, exist_ok=True)
+    (audit_dir / (file.filename or "document.txt")).write_bytes(data)
+    # Give the filesystem time to flush before parsing.
+    time.sleep(2)
     try:
         doc = await docs_service.save_document(
             db,
