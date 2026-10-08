@@ -1,5 +1,11 @@
 # ReviewPilot: Deep Technical Analysis & Production Transformation Prompt
 
+> **Historical document.** This is the brief written on top of the original single-file PoC (`main.py`, `auth.py`,
+> `reviewer.py`, `db.py`). Part 1 describes that PoC, which no longer exists; Part 2 is the prompt that
+> [`implementation.md`](implementation.md) turned into the current `backend/` and `frontend/`. Some choices here
+> were later changed (for example GitHub OAuth login became seeded credentials). For the current system read
+> [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ---
 
 ## Part 1: Elaborated Understanding of the Existing Project
