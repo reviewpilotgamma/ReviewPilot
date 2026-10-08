@@ -13,9 +13,10 @@ See [`implementation.md`](implementation.md) for the full design. The source bri
 
 ## How it works
 
-1. GitHub delivers a webhook. The backend verifies `X-Hub-Signature-256` over the raw body, drops bot events,
+1. GitHub delivers a webhook. The backend verifies `X-Hub-Signature-256` over the raw body, ignores bot events,
    dedupes by `X-GitHub-Delivery`, and stores the event plus its **jobs** in SQLite in a single transaction. It
-   responds `200` immediately.
+   responds `200` immediately. Bot events (ReviewPilot's own PR comments echoed back) are hidden from the
+   Activity log unless **Show bot events** is ticked.
 2. An in-process, DB-backed **worker** claims jobs atomically. It retries transient failures (30 s / 2 min / 10 min,
    honoring `retry-after`), re-queues jobs interrupted by a restart, and never runs two reviews of the same PR at once.
 3. A **review** job fetches PR metadata and the unified diff, truncates the diff at 120 000 chars, and injects the
