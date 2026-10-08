@@ -2,6 +2,7 @@
 
 | Track | Type | Status | Created |
 | --- | --- | --- | --- |
+| [rules_layout_20261008](tracks/rules_layout_20261008/index.md) | feature | in progress | 2026-10-08 |
 | [credential_auth_20261008](tracks/credential_auth_20261008/index.md) | feature | in progress | 2026-10-08 |
 | [review_insights_20261007](tracks/review_insights_20261007/index.md) | feature | in progress | 2026-10-07 |
 | [diff_batching_20261007](tracks/diff_batching_20261007/index.md) | feature | in progress | 2026-10-07 |
