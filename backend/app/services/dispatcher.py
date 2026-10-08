@@ -24,6 +24,7 @@ PLAN_RE = re.compile(r"(?<![\w@])@bot\s+plan\b", re.IGNORECASE)
 MAX_NOTE_CHARS = 500
 MAX_PREVIEW_CHARS = 2_000
 INSTALLATION_EVENTS = {"installation", "installation_repositories"}
+BOT_SENDER_REASON = "bot sender"
 
 
 @dataclass
@@ -179,7 +180,7 @@ def ingest(db: Session, *, event: str, delivery_id: str | None, payload: dict[st
     if event == "ping":
         record.status = "processed"
     elif is_bot_event(payload):
-        record.error_message = "bot sender"
+        record.error_message = BOT_SENDER_REASON
     else:
         result = plan_jobs(db, event, payload)
         if result.jobs:

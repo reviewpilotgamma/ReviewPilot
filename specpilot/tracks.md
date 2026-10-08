@@ -2,6 +2,7 @@
 
 | Track | Type | Status | Created |
 | --- | --- | --- | --- |
+| [bot_events_20261008](tracks/bot_events_20261008/index.md) | feature | in progress | 2026-10-08 |
 | [lines_kpi_20261008](tracks/lines_kpi_20261008/index.md) | feature | in progress | 2026-10-08 |
 | [rules_layout_20261008](tracks/rules_layout_20261008/index.md) | feature | in progress | 2026-10-08 |
 | [credential_auth_20261008](tracks/credential_auth_20261008/index.md) | feature | in progress | 2026-10-08 |

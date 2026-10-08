@@ -7,7 +7,7 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from starlette.concurrency import run_in_threadpool
 
@@ -71,6 +71,7 @@ def list_events(
     repo: Annotated[str | None, Query(max_length=200)] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     before_id: Annotated[int | None, Query(ge=1)] = None,
+    include_bot: bool = False,
 ) -> list[WebhookEvent]:
     repos = list(accessible)
     if repo:
@@ -93,4 +94,7 @@ def list_events(
         query = query.where(WebhookEvent.status == status_filter.value)
     if before_id:
         query = query.where(WebhookEvent.id < before_id)
+    if not include_bot:
+        # The bot's own PR comments echo back as ignored events; hide that noise unless asked.
+        query = query.where(func.coalesce(WebhookEvent.error_message, "") != dispatcher.BOT_SENDER_REASON)
     return list(db.scalars(query))
