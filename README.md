@@ -87,6 +87,25 @@ python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().de
 
 In development, these fall back to ephemeral values, so sessions reset when the server restarts.
 
+### Sharing the database offline
+
+To copy the SQLite database for someone else (safe while the server runs, because the database uses WAL mode):
+
+```bash
+cd backend
+sqlite3 reviewpilot.db ".backup reviewpilot-share.db"
+```
+
+To use a shared copy, stop the backend first, then from the repository root:
+
+```bash
+rm -f backend/reviewpilot.db-wal backend/reviewpilot.db-shm
+cp /path/to/reviewpilot-share.db backend/reviewpilot.db
+```
+
+The copy holds password hashes and encrypted GitHub tokens, so share it only with people you trust. The tokens
+decrypt only with the same `TOKEN_ENCRYPTION_KEY`; otherwise users reconnect GitHub.
+
 ### Signing in
 
 Users sign in at `/login` with one of two accounts that are seeded on startup from `backend/.env`:
