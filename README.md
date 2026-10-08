@@ -92,7 +92,8 @@ Users sign in at `/login` with one of two accounts that are seeded on startup fr
 | `dev` | `SEED_DEV_USERNAME` / `SEED_DEV_PASSWORD` | `dev` / `dev12345` |
 | `admin` | `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` | `admin` / `admin12345` |
 
-Only `admin` can edit Settings and the golden prompt. In production, set both passwords. An account without
+Only `admin` can edit Settings and the golden prompt. `admin` also sees every repository the GitHub App is
+installed on, using the App's own credentials, so no GitHub account needs to be connected. In production, set both passwords. An account without
 a password is not created, and changing a password in `.env` takes effect on the next restart.
 
 After the first sign-in the dashboard asks the user to **Install GitHub App** (also in the navbar). The install

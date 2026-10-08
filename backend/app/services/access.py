@@ -8,7 +8,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 from app.models import User
-from app.services import github_user
+from app.services import github_app, github_user
 from app.services.errors import ReauthRequired
 
 CACHE_TTL_SECONDS = 300
@@ -25,6 +25,8 @@ class RepoInfo:
     html_url: str
 
 
+APP_CACHE_KEY = -1  # cache slot for the App-wide repository list (user ids are positive)
+
 _cache: dict[int, tuple[float, dict[str, RepoInfo]]] = {}
 _locks: defaultdict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
 
@@ -35,6 +37,35 @@ def clear_cache(user_id: int | None = None) -> None:
         _locks.clear()
     else:
         _cache.pop(user_id, None)
+
+
+async def get_app_repos(*, refresh: bool = False) -> dict[str, RepoInfo]:
+    """Every repository of every installation of the GitHub App, via the App's own credentials (admins)."""
+    async with _locks[APP_CACHE_KEY]:
+        cached = _cache.get(APP_CACHE_KEY)
+        if cached and not refresh and cached[0] > time.time():
+            return cached[1]
+
+        repos: dict[str, RepoInfo] = {}
+        for inst in await github_app.list_app_installations():
+            account = inst.get("account") or {}
+            for repo in await github_app.list_installation_repositories(int(inst["id"])):
+                full_name = str(repo["full_name"]).lower()
+                repos[full_name] = _repo_info(repo, inst, account)
+        _cache[APP_CACHE_KEY] = (time.time() + CACHE_TTL_SECONDS, repos)
+        return repos
+
+
+def _repo_info(repo: dict, inst: dict, account: dict) -> RepoInfo:
+    return RepoInfo(
+        full_name=str(repo["full_name"]).lower(),
+        installation_id=int(inst["id"]),
+        account_login=account.get("login", ""),
+        account_type=account.get("type", ""),
+        account_avatar_url=account.get("avatar_url", ""),
+        private=bool(repo.get("private")),
+        html_url=repo.get("html_url", f"https://github.com/{repo['full_name']}"),
+    )
 
 
 async def get_accessible_repos(user: User, token: str | None, *, refresh: bool = False) -> dict[str, RepoInfo]:
@@ -51,14 +82,6 @@ async def get_accessible_repos(user: User, token: str | None, *, refresh: bool =
             account = inst.get("account") or {}
             for repo in await github_user.list_installation_repos(token, int(inst["id"])):
                 full_name = str(repo["full_name"]).lower()
-                repos[full_name] = RepoInfo(
-                    full_name=full_name,
-                    installation_id=int(inst["id"]),
-                    account_login=account.get("login", ""),
-                    account_type=account.get("type", ""),
-                    account_avatar_url=account.get("avatar_url", ""),
-                    private=bool(repo.get("private")),
-                    html_url=repo.get("html_url", f"https://github.com/{repo['full_name']}"),
-                )
+                repos[full_name] = _repo_info(repo, inst, account)
         _cache[user.id] = (time.time() + CACHE_TTL_SECONDS, repos)
         return repos

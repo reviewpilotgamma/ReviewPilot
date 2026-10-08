@@ -8,6 +8,7 @@ import jwt
 from fastapi import Depends, HTTPException, Path, Query, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import (
     CSRF_HEADER,
@@ -19,7 +20,7 @@ from app.core.security import (
 from app.models import User
 from app.models.user import ROLE_ADMIN
 from app.schemas.common import REPO_SEGMENT_PATTERN
-from app.services.access import RepoInfo, get_accessible_repos
+from app.services.access import RepoInfo, get_accessible_repos, get_app_repos
 from app.services.errors import ReauthRequired
 
 DbSession = Annotated[Session, Depends(get_db)]
@@ -64,11 +65,15 @@ AdminUser = Annotated[User, Depends(require_admin)]
 
 
 async def get_accessible(user: CurrentUser, refresh: bool = Query(False)) -> dict[str, RepoInfo]:
-    """Repositories visible to the current user through their linked GitHub identity.
+    """Repositories visible to the current user.
 
-    Not linked, or a token that is undecryptable or revoked, means no repositories (the UI then asks the user to
-    install the GitHub App) rather than a 401, so the user keeps their session.
+    Admins see every installation of the GitHub App (App credentials, no GitHub link needed). Everyone else sees
+    what their linked GitHub identity can reach through the App. Not linked, or a token that is undecryptable or
+    revoked, means no repositories (the UI then asks the user to install the GitHub App) rather than a 401, so the
+    user keeps their session.
     """
+    if is_admin(user) and get_settings().github_app_configured:
+        return await get_app_repos(refresh=refresh)
     token = decrypt_token(user.access_token) if user.access_token else None
     if token is None:
         return {}

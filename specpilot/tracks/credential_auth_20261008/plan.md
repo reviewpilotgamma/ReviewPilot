@@ -52,6 +52,12 @@
 - [x] 3.1 `backend/.env.example`, `README.md` (seed accounts, GitHub App callback and "request user
       authorization during installation"), `tech-stack.md` auth line
 
+## Phase 4 — Admin sees all App installations (follow-up)
+
+- [x] 4.1 `github_app.list_installation_repositories`, `access.get_app_repos`; `get_accessible` uses them for
+      admins; navbar treats any installation as installed; tests
+- [x] 4.2 Quality gate (backend and frontend) and a README note
+
 ## Implementation Notes
 
 - Connect is a `GET /auth/github/connect?mode=install|authorize` redirect rather than a POST that returns a

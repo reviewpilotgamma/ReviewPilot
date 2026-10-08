@@ -254,3 +254,52 @@ def test_logout_requires_csrf_header_and_clears_cookie(client, login):
     response = client.post("/api/v1/auth/logout", headers=CSRF)
     assert response.status_code == 204
     assert SESSION_COOKIE in response.headers.get("set-cookie", "")
+
+
+# --------------------------------------------------------------------------- admin sees every App installation
+def _mock_app_installations(mock_http):
+    mock_http.get(f"{GITHUB_API}/app/installations?per_page=100").respond(
+        200, json=[{"id": 55, "account": {"login": "acme", "type": "Organization", "avatar_url": ""}}]
+    )
+    mock_http.post(f"{GITHUB_API}/app/installations/55/access_tokens").respond(201, json={"token": "ghs_inst"})
+    mock_http.get(f"{GITHUB_API}/installation/repositories?per_page=100&page=1").respond(
+        200,
+        json={
+            "repositories": [
+                {"full_name": "acme/API", "private": True, "html_url": "https://github.com/acme/API"},
+                {"full_name": "acme/web", "private": False, "html_url": "https://github.com/acme/web"},
+            ]
+        },
+    )
+
+
+def test_admin_sees_app_installations_without_linking_github(client, mock_http):
+    _mock_app_installations(mock_http)
+    _sign_in(client, "admin", "admin-pass-123")
+    installs = client.get("/api/v1/github/installations").json()
+    assert [i["account_login"] for i in installs] == ["acme"]
+    assert [r["full_name"] for r in installs[0]["repos"]] == ["acme/api", "acme/web"]
+    assert client.get("/api/v1/auth/me").json()["github_linked"] is False
+
+
+def test_unlinked_dev_does_not_see_app_installations(client, mock_http):
+    _mock_app_installations(mock_http)
+    _sign_in(client)
+    assert client.get("/api/v1/github/installations").json() == []
+    assert mock_http.calls.call_count == 0
+
+
+def test_linked_dev_sees_only_repos_their_github_account_reaches(client, mock_http):
+    _mock_app_installations(mock_http)
+    _mock_github(mock_http)
+    mock_http.get(f"{GITHUB_API}/user/installations?per_page=100").respond(
+        200, json={"installations": [{"id": 55, "account": {"login": "acme", "type": "Organization"}}]}
+    )
+    mock_http.get(f"{GITHUB_API}/user/installations/55/repositories?per_page=100").respond(
+        200, json={"repositories": [{"full_name": "acme/web", "private": False}]}
+    )
+    _sign_in(client)
+    state = parse_qs(urlparse(_connect(client)).query)["state"][0]
+    client.get("/api/v1/auth/callback", params={"code": "c", "state": state}, follow_redirects=False)
+    installs = client.get("/api/v1/github/installations").json()
+    assert [r["full_name"] for i in installs for r in i["repos"]] == ["acme/web"]

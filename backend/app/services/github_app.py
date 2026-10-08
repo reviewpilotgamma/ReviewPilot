@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 API_VERSION = "2022-11-28"
 TOKEN_SAFETY_MARGIN_SECONDS = 60
+MAX_REPO_PAGES = 20
 
 
 def base_headers() -> dict[str, str]:
@@ -237,3 +238,17 @@ async def get_app() -> dict[str, Any]:
 
 async def list_app_installations() -> list[dict[str, Any]]:
     return (await _app_request("/app/installations?per_page=100")).json()
+
+
+async def list_installation_repositories(installation_id: int) -> list[dict[str, Any]]:
+    """Every repository an installation grants (installation token, paginated)."""
+    repos: list[dict[str, Any]] = []
+    for page in range(1, MAX_REPO_PAGES + 1):
+        response = await _installation_request(
+            installation_id, "GET", f"/installation/repositories?per_page=100&page={page}"
+        )
+        batch = response.json().get("repositories", [])
+        repos.extend(batch)
+        if len(batch) < 100:
+            break
+    return repos

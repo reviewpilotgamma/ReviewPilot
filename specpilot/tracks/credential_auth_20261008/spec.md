@@ -38,10 +38,13 @@ before their data appears.
    dashboard shows the "Install the GitHub App to see your data" step with the install and connect actions.
    Other pages show a banner with the same actions. This also applies when GitHub is not configured (local
    development): the user is gated and the install button is disabled.
-7. **Removed.** GitHub OAuth used as login (`GET /auth/login`), `POST /auth/dev-login`, local mode (the
+7. **Admin sees every installation.** An admin sees the repositories of every installation of the GitHub
+   App. These are listed with the App's own credentials (App JWT and installation tokens), with no GitHub link
+   needed. A dev user sees only the repositories their linked GitHub account can reach through the App.
+8. **Removed.** GitHub OAuth used as login (`GET /auth/login`), `POST /auth/dev-login`, local mode (the
    `local/manual` workspace and `AppInfo.local_mode`), the frontend `loginUrl` and `authApi.devLogin`.
    `ProtectedRoute` redirects to `/login?next=…`.
-8. **`/auth/me`** returns `role`, `github_login` (nullable), `github_linked: bool` and a nullable `github_id`.
+9. **`/auth/me`** returns `role`, `github_login` (nullable), `github_linked: bool` and a nullable `github_id`.
 
 ## Non-Functional Requirements
 
@@ -81,7 +84,8 @@ before their data appears.
   `/login`.
 - The seeded `dev` and `admin` accounts sign in. `admin` gets admin-only Settings and Prompt editing; `dev`
   does not.
-- A first sign-in shows the install message on the dashboard, and the navbar shows **Install GitHub App**.
+- An admin sees the existing App installations' repositories right after signing in, with no GitHub link.
+- A dev's first sign-in shows the install message on the dashboard, and the navbar shows **Install GitHub App**.
 - After install and callback, the dashboard shows only that user's repositories.
 - Backend `ruff check .` and `pytest` pass. Frontend `npm run lint`, `npm run typecheck` and `npm test` pass.
 

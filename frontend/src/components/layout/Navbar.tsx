@@ -7,7 +7,7 @@ import { useAuth, useWorkspace } from "@/hooks/useAuth";
 export function Navbar({ title, onMenu }: { title: string; onMenu: () => void }) {
   const { user, logout } = useAuth();
   const { installations, isLoading: installsLoading, repos, selectedRepo, setSelectedRepo } = useWorkspace();
-  const installed = Boolean(user?.github_linked) && installations.length > 0;
+  const installed = installations.length > 0;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
