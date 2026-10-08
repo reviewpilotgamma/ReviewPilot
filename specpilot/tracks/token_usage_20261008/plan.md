@@ -45,9 +45,9 @@ TS type), `ReviewsTable`, `History`.
 
 ## Phase 2: Tokens column on Review History
 
-- [~] **2.1 Type and formatter.** `tokens_used?: number | null` on `ReviewListItem`; `formatTokens()` in
+- [x] **2.1 Type and formatter.** `895ab1a` `tokens_used?: number | null` on `ReviewListItem`; `formatTokens()` in
   `lib/format.ts`. Vitest cases. Gate: `npm run lint`, `npm run typecheck`, `npm test`.
-- [ ] **2.2 Table column.** `showTokens` prop on `ReviewsTable` (header "Tokens" after "Lines"); `History` passes
+- [~] **2.2 Table column.** `showTokens` prop on `ReviewsTable` (header "Tokens" after "Lines"); `History` passes
   it. Vitest: History shows the value and "—"; Dashboard has no Tokens column. Gate: same as 2.1.
 - [ ] **2.3 Docs.** Update the README if it documents the History columns.
 

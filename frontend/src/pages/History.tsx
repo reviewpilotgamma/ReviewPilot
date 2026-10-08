@@ -109,6 +109,7 @@ export default function History() {
             reviews={data?.items ?? []}
             loading={isLoading}
             showFeedback
+            showTokens
             onSelect={(id) => update({ review: String(id) }, false)}
           />
         )}

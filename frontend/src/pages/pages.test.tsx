@@ -65,6 +65,34 @@ describe("Dashboard KPIs", () => {
   });
 });
 
+describe("Tokens column", () => {
+  it("shows the tokens each review used on History, with a dash when none were recorded", async () => {
+    const counted = { ...REVIEW, tokens_used: 12480 };
+    const older = { ...REVIEW, id: 2, pr_number: 8, pr_title: "Older review", tokens_used: null };
+    mockFetch({ "GET /api/v1/reviews": { items: [counted, older], total: 2, page: 1, page_size: 20 } });
+    renderWithProviders(<History />, { path: "/history" });
+
+    await screen.findByText("Older review");
+    const [, first, second] = screen.getAllByRole("row"); // skip the header row
+    const headers = screen.getAllByRole("columnheader").map((th) => th.textContent);
+    expect(headers.indexOf("Tokens")).toBe(headers.indexOf("Lines") + 1);
+    expect(within(first!).getByText((12480).toLocaleString())).toBeInTheDocument();
+    expect(within(second!).getByText("—")).toBeInTheDocument();
+  });
+
+  it("is not shown in the Dashboard's recent reviews", async () => {
+    mockFetch({
+      "GET /api/v1/github/app": { configured: true, slug: "reviewpilot", name: "ReviewPilot", install_url: "", html_url: "" },
+      "GET /api/v1/metrics/summary": { total_reviews: 1, lines_reviewed: 12, recent: [{ ...REVIEW, tokens_used: 999 }] },
+      "GET /api/v1/metrics/trend": [],
+    });
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByRole("row", { name: /Open review of PR #7/ })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Tokens" })).not.toBeInTheDocument();
+    expect(screen.queryByText("999")).not.toBeInTheDocument();
+  });
+});
+
 describe("Removed Run review route", () => {
   it("shows Not Found at /run", async () => {
     mockFetch({});
