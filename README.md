@@ -9,6 +9,8 @@ backend/   FastAPI · SQLAlchemy 2 (SQLite, WAL) · Alembic · Pydantic v2 · ht
 frontend/  React 18 · Vite · TypeScript · TanStack Query · Tailwind CSS
 ```
 
+Local pilot data lives in `backend/reviewpilot.db` (SQLite).
+
 See [`implementation.md`](implementation.md) for the full design. The source brief is [`Application-Prompt.md`](Application-Prompt.md).
 
 ## How it works
