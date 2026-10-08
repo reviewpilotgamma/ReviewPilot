@@ -37,6 +37,8 @@ class ReviewListItem(ORMModel):
     trigger: str
     pr_url: str
     diff_truncated: bool = False
+    head_sha: str | None = None
+    previous_review_id: int | None = None
     feedback_counts: dict[str, int] = Field(default_factory=lambda: {"helpful": 0, "unhelpful": 0})
 
 

@@ -2,6 +2,7 @@
 
 | Track | Type | Status | Created |
 | --- | --- | --- | --- |
+| [followup_review_20261008](tracks/followup_review_20261008/index.md) | feature | in progress | 2026-10-08 |
 | [test_coverage_20261008](tracks/test_coverage_20261008/index.md) | chore | done | 2026-10-08 |
 | [docs_audit_20261008](tracks/docs_audit_20261008/index.md) | chore | done | 2026-10-08 |
 | [scope_check_20261008](tracks/scope_check_20261008/index.md) | feature | in progress | 2026-10-08 |
