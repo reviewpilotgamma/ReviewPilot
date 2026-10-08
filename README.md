@@ -188,3 +188,12 @@ python -m scripts.import_legacy_db --src path/to/old/reviewpilot.db
   and reject newlines.
 - The LLM prompt treats the diff and PR description as untrusted data. The frontend renders review markdown
   without raw HTML.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| No review appears on a new PR | Open **Activity** and confirm the webhook arrived. If it did not, redeliver it from the GitHub App's *Advanced* tab. |
+| Review job fails with `429` | The Gemini quota is exhausted. The worker retries with backoff; comment `@review` once the quota resets. |
+| Signed out after restarting the backend | `SESSION_SECRET` is unset in development, so a new one is generated on every start. Set it in `backend/.env`. |
+| Repository missing from the dashboard | Make sure the GitHub App is installed on it, or ask an admin to grant it with `scripts.grant_repo`. |
