@@ -28,6 +28,8 @@ class GeminiResult:
     text: str
     model: str
     finish_reason: str | None
+    # Tokens the call used (input incl. cached, output and thinking); None when Gemini reports no usage.
+    tokens_used: int | None = None
 
 
 @dataclass(frozen=True)
@@ -41,6 +43,16 @@ def _api_key(override: str | None = None) -> str:
     if not key:
         raise GeminiNotConfigured("GEMINI_API_KEY is not set")
     return key
+
+
+def _usage_tokens(usage: dict) -> int | None:
+    """Total tokens from ``usageMetadata``; summed from the parts when ``totalTokenCount`` is missing."""
+    total = usage.get("totalTokenCount")
+    if isinstance(total, int):
+        return total
+    parts = [usage.get(k) for k in ("promptTokenCount", "candidatesTokenCount", "thoughtsTokenCount")]
+    counts = [p for p in parts if isinstance(p, int)]
+    return sum(counts) if counts else None
 
 
 def _model_resource(model: str | None = None) -> str:
@@ -171,7 +183,7 @@ async def generate(
             usage.get("cachedContentTokenCount"),
             usage.get("promptTokenCount"),
         )
-    return GeminiResult(text=text, model=model, finish_reason=finish_reason)
+    return GeminiResult(text=text, model=model, finish_reason=finish_reason, tokens_used=_usage_tokens(usage))
 
 
 async def validate(api_key: str | None = None, model: str | None = None) -> tuple[bool, str, str]:

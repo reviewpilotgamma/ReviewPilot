@@ -70,6 +70,15 @@ def test_pagination(client, login, seeded):
     assert data["total"] == 3 and [r["pr_number"] for r in data["items"]] == [1]
 
 
+def test_list_and_detail_expose_tokens_used(client, login, db, seeded):
+    seeded[1].tokens_used = 12_480
+    db.commit()
+    login()
+    tokens = {r["pr_number"]: r["tokens_used"] for r in client.get("/api/v1/reviews").json()["items"]}
+    assert tokens == {1: None, 2: 12_480, 3: None}
+    assert client.get(f"/api/v1/reviews/{seeded[1].id}").json()["tokens_used"] == 12_480
+
+
 def test_filter_by_inaccessible_repo_404(client, login, seeded):
     login()
     assert client.get("/api/v1/reviews", params={"repo": "other/repo"}).status_code == 404

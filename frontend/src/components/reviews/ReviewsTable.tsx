@@ -2,7 +2,7 @@ import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { FollowUpBadge, PartialBadge, VerdictBadge } from "@/components/ui/Badge";
 import { Cell, Row, Table } from "@/components/ui/Table";
 import { SkeletonRows } from "@/components/ui/States";
-import { absoluteTime, formatScore, relativeTime, scoreTone } from "@/lib/format";
+import { absoluteTime, formatScore, formatTokens, relativeTime, scoreTone } from "@/lib/format";
 import type { ReviewListItem } from "@/types/api";
 
 const TONE_TEXT = { emerald: "text-emerald", amber: "text-amber", rose: "text-rose", muted: "text-muted" } as const;
@@ -12,10 +12,19 @@ interface ReviewsTableProps {
   loading?: boolean;
   onSelect: (id: number) => void;
   showFeedback?: boolean;
+  /** Adds a Tokens column (Gemini tokens the review used) after Lines. */
+  showTokens?: boolean;
 }
 
-export function ReviewsTable({ reviews, loading, onSelect, showFeedback = false }: ReviewsTableProps) {
+export function ReviewsTable({
+  reviews,
+  loading,
+  onSelect,
+  showFeedback = false,
+  showTokens = false,
+}: ReviewsTableProps) {
   const head = ["Date", "Repository", "Pull request", "Author", "Verdict", "Score", "Lines"];
+  if (showTokens) head.push("Tokens");
   if (showFeedback) head.push("Feedback");
   return (
     <Table head={head}>
@@ -54,6 +63,7 @@ export function ReviewsTable({ reviews, loading, onSelect, showFeedback = false 
               {formatScore(review.score)}
             </Cell>
             <Cell className="tabular-nums text-muted">{review.lines_reviewed.toLocaleString()}</Cell>
+            {showTokens && <Cell className="tabular-nums text-muted">{formatTokens(review.tokens_used)}</Cell>}
             {showFeedback && (
               <Cell className="whitespace-nowrap text-xs text-muted">
                 <span className="mr-3 inline-flex items-center gap-1">

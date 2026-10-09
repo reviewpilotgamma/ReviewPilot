@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { promptFixture } from "@/test/prompt";
 import { appendPreset } from "./directives";
-import { formatPercent, formatScore, prettyJson, scoreTone } from "./format";
+import { formatPercent, formatScore, formatTokens, prettyJson, scoreTone } from "./format";
 import { assembledText, assemblePrompt, insertAt, validateTemplate } from "./prompt";
 
 describe("appendPreset", () => {
@@ -82,6 +82,10 @@ describe("format helpers", () => {
     expect(formatPercent(undefined)).toBe("—");
     expect(formatPercent(88.2)).toBe("88.2%");
     expect(formatPercent(94)).toBe("94%");
+    expect(formatTokens(null)).toBe("—");
+    expect(formatTokens(undefined)).toBe("—");
+    expect(formatTokens(0)).toBe("0");
+    expect(formatTokens(12480)).toBe((12480).toLocaleString());
   });
   it("bands scores by verdict ranges", () => {
     expect(scoreTone(8)).toBe("emerald");

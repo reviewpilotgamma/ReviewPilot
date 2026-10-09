@@ -25,6 +25,8 @@ class PRReview(Base):
     verdict: Mapped[str] = mapped_column(String(10), nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
     lines_reviewed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Gemini tokens the review used, summed over its calls (null for older reviews or when none were reported).
+    tokens_used: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True, nullable=False)
     trigger: Mapped[str] = mapped_column(String(10), default="comment", nullable=False)
     requester: Mapped[str | None] = mapped_column(String(100))

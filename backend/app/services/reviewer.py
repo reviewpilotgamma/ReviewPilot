@@ -166,6 +166,12 @@ def list_files(paths: Sequence[str], limit: int = MAX_LISTED_FILES) -> str:
     return shown + (f" and {len(paths) - limit} more" if len(paths) > limit else "")
 
 
+def sum_tokens(*counts: int | None) -> int | None:
+    """Total of the calls that reported token usage; None when none did."""
+    known = [c for c in counts if c is not None]
+    return sum(known) if known else None
+
+
 def worst_verdict(*verdicts: str) -> str:
     return max(verdicts, key=VERDICT_RANK.__getitem__)
 
@@ -345,6 +351,7 @@ class BatchOutcome:
     batch: DiffBatch
     parsed: ParsedReview | None = None
     model: str | None = None
+    tokens: int | None = None
     error: BaseException | None = None
 
 
@@ -355,6 +362,7 @@ class BatchedReview:
     lines_reviewed: int
     not_reviewed: list[str]
     merged_in_code: bool = False
+    tokens_used: int | None = None
 
 
 async def _fetch_diff(ctx: JobContext) -> str:
@@ -426,7 +434,9 @@ async def _review_one_batch(
                 continue
             except Exception as exc:  # noqa: BLE001 - a failed batch must not fail the whole review
                 return BatchOutcome(number, batch, error=exc)
-        return BatchOutcome(number, batch, parsed=parse_review(result.text), model=result.model)
+        return BatchOutcome(
+            number, batch, parsed=parse_review(result.text), model=result.model, tokens=result.tokens_used
+        )
     return BatchOutcome(number, batch, error=error)
 
 
@@ -484,8 +494,11 @@ async def _merge_reviews(
     parts: list[tuple[int, list[str], ParsedReview]],
     total: int,
     followup: FollowUp | None = None,
-) -> tuple[ParsedReview, str | None]:
-    """One LLM call that merges the batch reviews; joined in code if the call fails."""
+) -> tuple[ParsedReview, str | None, int | None]:
+    """One LLM call that merges the batch reviews; joined in code if the call fails.
+
+    Returns the merged review, the merge model (None when joined in code) and the merge call's tokens.
+    """
     content = build_merge_content(
         pr,
         ctx.owner,
@@ -499,8 +512,8 @@ async def _merge_reviews(
         result = await gemini.generate(system, content)
     except ServiceError as exc:
         logger.warning("Merging %s batch reviews failed (%s); joining them in code", len(parts), exc)
-        return fallback_merge([(n, p) for n, _, p in parts], total), None
-    return parse_review(result.text), result.model
+        return fallback_merge([(n, p) for n, _, p in parts], total), None, None
+    return parse_review(result.text), result.model, result.tokens_used
 
 
 async def _review_in_batches(
@@ -528,7 +541,7 @@ async def _review_in_batches(
         raise GeminiTransientError("all review batches failed") from error
 
     parts = [(o.number, o.batch.paths, o.parsed) for o in succeeded if o.parsed is not None]
-    merged, merge_model = await _merge_reviews(ctx, pr, parts, len(outcomes), followup)
+    merged, merge_model, merge_tokens = await _merge_reviews(ctx, pr, parts, len(outcomes), followup)
     merged = enforce_verdict_floor(merged, [p.verdict for _, _, p in parts])
 
     not_reviewed: list[str] = []
@@ -549,6 +562,7 @@ async def _review_in_batches(
         lines_reviewed=sum(o.batch.changed_lines for o in succeeded),
         not_reviewed=not_reviewed,
         merged_in_code=merge_model is None,
+        tokens_used=sum_tokens(*(o.tokens for o in succeeded), merge_tokens),
     )
 
 
@@ -661,7 +675,7 @@ async def handle_review(ctx: JobContext) -> None:
             cached_content=cached,
             inline_documents=inline_docs,
         )
-        parsed, model = parse_review(result.text), result.model
+        parsed, model, tokens_used = parse_review(result.text), result.model, result.tokens_used
         lines_reviewed = plan.batches[0].changed_lines if plan.filtered else count_changed_lines(diff)
         not_reviewed: list[str] = []
         merged_in_code = False
@@ -676,12 +690,13 @@ async def handle_review(ctx: JobContext) -> None:
             inline_docs=inline_docs,
             followup=followup,
         )
-        parsed, model, lines_reviewed, not_reviewed, merged_in_code = (
+        parsed, model, lines_reviewed, not_reviewed, merged_in_code, tokens_used = (
             outcome.parsed,
             outcome.model,
             outcome.lines_reviewed,
             outcome.not_reviewed,
             outcome.merged_in_code,
+            outcome.tokens_used,
         )
 
     diff_truncated = truncated or bool(not_reviewed) or bool(plan.cut_files)
@@ -712,6 +727,7 @@ async def handle_review(ctx: JobContext) -> None:
         verdict=parsed.verdict,
         score=parsed.score,
         lines_reviewed=lines_reviewed,
+        tokens_used=tokens_used,
         trigger=trigger,
         requester=ctx.data.get("requester"),
         diff_truncated=diff_truncated,

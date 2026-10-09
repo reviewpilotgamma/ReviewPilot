@@ -69,6 +69,23 @@ async def test_generate_sends_cache_handle_and_logs_cache_hits(mock_http, caplog
     assert "cache hit: cached=900 prompt=1000" in caplog.text
 
 
+@pytest.mark.parametrize(
+    ("usage", "tokens"),
+    [
+        ({"totalTokenCount": 1500, "promptTokenCount": 1000, "candidatesTokenCount": 200}, 1500),
+        ({"promptTokenCount": 1000, "candidatesTokenCount": 200, "thoughtsTokenCount": 50}, 1250),
+        ({"promptTokenCount": 1000}, 1000),
+        ({}, None),
+        (None, None),
+    ],
+)
+async def test_generate_reports_tokens_used(mock_http, usage, tokens):
+    payload = _candidate("ok") if usage is None else {**_candidate("ok"), "usageMetadata": usage}
+    mock_http.post(GENERATE).respond(200, json=payload)
+    result = await gemini.generate("system", "user")
+    assert result.tokens_used == tokens
+
+
 async def test_generate_inlines_documents_without_a_cache(mock_http):
     route = mock_http.post(GENERATE).respond(200, json=_candidate("ok"))
     await gemini.generate("system", "user", inline_documents="ARCH DOC")

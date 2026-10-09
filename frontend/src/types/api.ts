@@ -119,6 +119,8 @@ export interface ReviewListItem {
   verdict: Verdict;
   score: number;
   lines_reviewed: number;
+  /** Gemini tokens the review used (null for older reviews). */
+  tokens_used?: number | null;
   summary: string;
   created_at: string;
   trigger: string;
